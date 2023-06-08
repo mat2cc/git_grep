@@ -1,11 +1,11 @@
-mod lexer;
-mod diff_lexer;
-mod parser;
+mod diff;
+mod one_line;
 
 use clap::Parser;
 use std::process::Command;
 
-use crate::lexer::Lexer;
+use one_line::lexer::Lexer;
+
 
 #[derive(Parser)]
 #[command(author, about, version)]
@@ -35,7 +35,7 @@ fn main() {
 
     let o = a.output().expect("failed command");
     let l = Lexer::new(o.stdout);
-    let mut p = crate::parser::Parser::new(l);
+    let mut p = one_line::parser::Parser::new(l);
     let program = p.parse_program();
 
     let mut out = String::new();

@@ -1,4 +1,4 @@
-use crate::lexer::{Lexer, Token};
+use super::lexer::{Lexer, Token};
 
 pub struct Program(pub Vec<Commit>);
 
