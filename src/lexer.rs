@@ -36,7 +36,16 @@ pub struct Lexer {
 }
 
 impl Lexer {
-    pub fn new(s: String) -> Self {
+    pub fn new(input: Vec<u8>) -> Self {
+        Self {
+            ch: input[0],
+            input,
+            pos: 0,
+        }
+    }
+
+
+    pub fn new_from_string(s: String) -> Self {
         let input = s.into_bytes();
         Self {
             ch: input[0],
@@ -120,7 +129,7 @@ a42cc2e1c21d71ce016b5b878b4b1ac801a5fb83 feat: parsing done "#;
             Token::EOF,
         ];
 
-        let mut l = Lexer::new(input.into());
+        let mut l = Lexer::new_from_string(input.into());
         for i in 0..output.len() {
             assert_eq!(output[i], l.next_token())
         }

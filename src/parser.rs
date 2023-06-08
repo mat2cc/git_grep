@@ -1,6 +1,6 @@
 use crate::lexer::{Lexer, Token};
 
-struct Program(Vec<Commit>);
+pub struct Program(pub Vec<Commit>);
 
 impl Program {
     pub fn print(&self) -> String {
@@ -12,15 +12,15 @@ impl Program {
     }
 }
 
-struct Commit {
-    hash: String,
+pub struct Commit {
+    pub hash: String,
     message: String,
     head: Option<Vec<String>>,
 }
 
 impl Commit {
     pub fn print(&self) -> String {
-        let mut head = self.head.clone().unwrap_or_default();
+        let head = self.head.clone().unwrap_or_default();
         let mut head = head.join(" ");
         if !head.is_empty() {
             head = format!("  (HEAD -> {})", head);
@@ -29,7 +29,7 @@ impl Commit {
     }
 }
 
-struct Parser {
+pub struct Parser {
     l: Lexer,
     curr_token: Token,
     peek_token: Token,
@@ -121,7 +121,7 @@ impl Parser {
 
 #[cfg(test)]
 mod tests {
-    use super::{Lexer, Parser, Token};
+    use super::{Lexer, Parser};
 
     #[test]
     fn parsing() {
@@ -132,7 +132,7 @@ a42cc2e1c21d71ce016b5b878b4b1ac801a5fb83 feat: parsing done
 b132603284b4de2895031cf3eaa118f746abb13a feat: ast implemented
 16d7df69c7e3d102952dcde48a2a85a663710431 interepreter"#;
 
-        let l = Lexer::new(input.clone().into());
+        let l = Lexer::new_from_string(input.clone().into());
         // let mut lex2 = Lexer::new(input.into());
         // loop {
         //     match lex2.next_token() {
