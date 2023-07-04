@@ -124,9 +124,9 @@ impl DiffParser {
     fn parse_chunk(&mut self) -> Result<Chunk, String> {
         self.expect_token(DiffToken::ChunkMarker)?;
         self.expect_token(DiffToken::Dash)?;
-        let (added_start, added_changes) = self.parse_diff_chunk_range()?;
-        self.expect_token(DiffToken::Plus)?;
         let (removed_start, removed_changes) = self.parse_diff_chunk_range()?;
+        self.expect_token(DiffToken::Plus)?;
+        let (added_start, added_changes) = self.parse_diff_chunk_range()?;
         self.expect_token(DiffToken::ChunkMarker)?;
 
         let content = self.parse_content();
@@ -214,10 +214,10 @@ index 0000000..000012a
                 a_file: String::from("a/src/ast.rs"),
                 b_file: String::from("b/src/ast.rs"),
                 chunks: vec![Chunk {
-                    added_start: 1,
-                    added_changes: 8,
-                    removed_start: 0,
-                    removed_changes: 0,
+                    removed_start: 1,
+                    removed_changes: 8,
+                    added_start: 0,
+                    added_changes: 0,
                     content: vec![
                         Content {
                             line_data: "enum Ast {".into(),
@@ -234,10 +234,10 @@ index 0000000..000012a
                 a_file: String::from("a/src/diff/diff_ast.rs"),
                 b_file: String::from("b/src/diff/diff_ast.rs"),
                 chunks: vec![Chunk {
-                    added_start: 0,
-                    added_changes: 0,
-                    removed_start: 1,
-                    removed_changes: 33,
+                    removed_start: 0,
+                    removed_changes: 0,
+                    added_start: 1,
+                    added_changes: 33,
                     content: vec![
                         Content {
                             line_data: "pub struct Program{".into(),
@@ -289,10 +289,10 @@ index 318bd87..0000000
             b_file: String::from("b/src/ast.rs"),
             chunks: vec![
                 Chunk {
-                    added_start: 1,
-                    added_changes: 8,
-                    removed_start: 0,
-                    removed_changes: 0,
+                    added_start: 0,
+                    added_changes: 0,
+                    removed_start: 1,
+                    removed_changes: 8,
                     content: vec![
                         Content {
                             line_data: "enum Ast {".into(),
@@ -306,9 +306,9 @@ index 318bd87..0000000
                 },
                 Chunk {
                     added_start: 10,
-                    added_changes: 80,
+                    added_changes: 60,
                     removed_start: 10,
-                    removed_changes: 60,
+                    removed_changes: 80,
                     content: vec![
                         Content {
                             line_data: "enum Test {".into(),
