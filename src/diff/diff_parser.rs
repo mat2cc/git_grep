@@ -79,8 +79,8 @@ impl DiffParser {
 
         while self.curr_token != DiffToken::NewLine
             && self.curr_token != DiffToken::EOF
-            && self.curr_token != DiffToken::Diff
-            && self.curr_token != DiffToken::ChunkMarker
+            && !(self.curr_token == DiffToken::ChunkMarker && self.peek_token == DiffToken::Dash)
+            && !(self.curr_token == DiffToken::Diff && self.peek_token == DiffToken::Git)
         {
             let sub_str = self.curr_token.to_string();
             if !sub_str.is_empty() {
@@ -104,7 +104,13 @@ impl DiffParser {
         use DiffToken::*;
         loop {
             let content = match self.curr_token {
-                Diff => break,
+                Diff => {
+                    if self.peek_token == Git {
+                        break;
+                    }
+                    self.next_token();
+                    self.parse_content_line()
+                },
                 EOF => break,
                 ChunkMarker => break,
                 NewLine => {
@@ -173,8 +179,9 @@ impl DiffParser {
             match self.parse_statement() {
                 Ok(s) => program.statements.push(s),
                 Err(e) => {
+                    println!("{:?}", program.statements);
                     panic!("{e:?}");
-                    //program.errors.push(e);
+                    // program.errors.push(e);
                 }
             }
         }
@@ -190,6 +197,77 @@ mod tests {
     use super::{DiffLexer, DiffParser};
 
     #[test]
+    fn testing_incorrect_symbols() {
+        let input = r#"diff --git a/src/ast.rs b/src/ast.rs
+deleted file mode 100644
+index 318bd87..0000000
+--- a/src/ast.rs
++++ /dev/null
+@@ -1,8 +0,0 @@
+-enum Ast { 
+    Testing // @@ a
+-} 
+@@ -10,80 +10,60 @@
+-enum Test {
++   Hi
+-}
+"#;
+
+        let match_statements = vec![Statement {
+            a_file: String::from("a/src/ast.rs"),
+            b_file: String::from("b/src/ast.rs"),
+            chunks: vec![
+                Chunk {
+                    added_start: 0,
+                    added_changes: 0,
+                    removed_start: 1,
+                    removed_changes: 8,
+                    content: vec![
+                        Content {
+                            line_data: "enum Ast {".into(),
+                            c_type: ContentType::Remove,
+                        },
+                        Content {
+                            line_data: "Testing // @@ a".into(),
+                            c_type: ContentType::Neutral,
+                        },
+                        Content {
+                            line_data: "}".into(),
+                            c_type: ContentType::Remove,
+                        },
+                    ],
+                },
+                Chunk {
+                    added_start: 10,
+                    added_changes: 60,
+                    removed_start: 10,
+                    removed_changes: 80,
+                    content: vec![
+                        Content {
+                            line_data: "enum Test {".into(),
+                            c_type: ContentType::Remove,
+                        },
+                        Content {
+                            line_data: "Hi".into(),
+                            c_type: ContentType::Add,
+                        },
+                        Content {
+                            line_data: "}".into(),
+                            c_type: ContentType::Remove,
+                        },
+                    ],
+                },
+            ],
+        }];
+
+        let l = DiffLexer::new_from_string(input.into());
+        let mut t = DiffParser::new(l);
+        let p = t.parse_program();
+
+        assert_eq!(p.errors.len(), 0);
+        assert_eq!(p.statements, match_statements);
+    }
+    #[test]
     fn main_test() {
         let input = r#"diff --git a/src/ast.rs b/src/ast.rs
 deleted file mode 100644
@@ -198,7 +276,8 @@ index 318bd87..0000000
 +++ /dev/null
 @@ -1,8 +0,0 @@
 -enum Ast {
--} diff --git a/src/diff/diff_ast.rs b/src/diff/diff_ast.rs
+-} 
+diff --git a/src/diff/diff_ast.rs b/src/diff/diff_ast.rs
 new file mode 100644
 index 0000000..000012a
 --- /dev/null

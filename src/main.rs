@@ -1,11 +1,13 @@
 mod diff;
 mod one_line;
+mod matcher;
 
 use clap::Parser;
 use std::process::Command;
 
-use one_line::lexer::Lexer;
+use one_line::{lexer::Lexer, parser::Commit};
 
+use crate::{diff::{diff_lexer::DiffLexer, diff_parser::DiffParser}, matcher::{Matcher, MatchFormat}};
 
 #[derive(Parser)]
 #[command(author, about, version)]
@@ -14,15 +16,13 @@ struct Cli {
     search: String,
     // path of the git repository
     // path: std::path::PathBuf,
-
     /// depth
     #[arg(short, long)]
-    depth: Option<usize> 
-
-    // TODO: context, we should be able to grab context from the standard diff
-    // however if context is too large, we might have to get the full diff rather than the
-    // compressed one
+    depth: Option<usize>, // TODO: context, we should be able to grab context from the standard diff
+                          // however if context is too large, we might have to get the full diff rather than the
+                          // compressed one
 }
+
 
 fn main() {
     let cli = Cli::parse();
@@ -38,24 +38,9 @@ fn main() {
     let mut p = one_line::parser::Parser::new(l);
     let program = p.parse_program();
 
-    let mut out = String::new();
-    for x in program.0.iter() {
-        let diff = std::process::Command::new("git")
-            .args(["diff", &x.hash])
-            .output()
-            .expect(&format!("failed diff for commit {}", &x.hash));
-        let str_diff = std::str::from_utf8(&diff.stdout)
-            .expect("couldn't read file");
+    let matcher = Matcher::new(&program, &cli.search);
 
-        if str_diff.contains(&cli.search) {
-            out.push_str(&format!("Commit: {}\n", &x.hash));
-            str_diff
-                .lines()
-                .filter(|l| l.contains(&cli.search))
-                .for_each(|l| out.push_str(&format!("{}\n", l)));
-        }
-    }
+    // TODO: convert this to be multithreaded
 
-    println!("{}", program.print());
-    println!("{}", out);
+    println!("{}", matcher.print());
 }
