@@ -1,91 +1,18 @@
-use std::{thread, sync::{Arc, self, mpsc::Sender}, rc::Rc};
+use std::{
+    sync::{self, mpsc::Sender, Arc},
+    thread,
+};
 
 use crate::{
     diff::{diff_lexer::DiffLexer, diff_parser::DiffParser},
+    formatter::{Color, FormatBuilder, Styles},
     one_line::parser::{Commit, Program},
 };
 
-pub trait MatchFormat {
-    fn print(&self) -> String;
-}
-
-pub struct Matcher {
-    program: Program,
-    search_string: String,
-}
-
-pub struct MatcherOutput{
+pub struct MatcherOutput {
     search_string: String,
     commit_matches: Vec<CommitMatcher>,
     total_matches: usize,
-}
-
-type ChannelData = (CommitMatcher, usize);
-// 
-// impl Matcher {
-//     pub fn new(program: Program, search_string: String) -> Self {
-//         Self {
-//             program,
-//             search_string: search_string.to_string(),
-//         }
-//     }
-// 
-//     pub fn run(&mut self) -> MatcherOutput {
-//         let mut commit_matches: Vec<CommitMatcher> = Vec::new();
-//         let mut total_matches: usize = 0;
-//         let (tx, rx) = sync::mpsc::channel::<ChannelData>();
-//         
-//         for commit in self.program.0.iter() { // TODO: change this into .iter()
-//             let sender = tx.clone();
-//             let search_string = self.search_string.clone();
-//             thread::spawn(|| {
-//                 thread_runner(commit, search_string, sender);
-//             });
-//         }
-//         return MatcherOutput {
-//             commit_matches,
-//             total_matches,
-//             search_string: String::from("")
-//         };
-//     }
-// }
-
-pub fn do_the_matching(program: Program, search_string: String) -> MatcherOutput {
-        let mut commit_matches: Vec<CommitMatcher> = Vec::new();
-        let mut total_matches: usize = 0;
-        let (tx, rx) = sync::mpsc::channel::<ChannelData>();
-        
-        let mut messages: usize = 0;
-        for commit in program.0.into_iter() { // TODO: change this into .iter()
-            messages+= 1;
-            let sender = tx.clone();
-            let search_string = search_string.clone();
-            thread::spawn(|| {
-                thread_runner(commit, search_string, sender);
-            });
-        }
-
-        for _ in 0..messages {
-            match rx.recv() {
-                Ok((commit, num_matches)) => {
-                    commit_matches.push(commit);
-                    total_matches += num_matches
-                }
-                Err(e) => panic!("{}", e)
-            }
-
-        }
-        return MatcherOutput {
-            commit_matches,
-            total_matches,
-            search_string
-        };
-}
-
-fn thread_runner(commit: Commit, search_string: String, tx: Sender<ChannelData>) {
-    let commit_match = CommitMatcher::find_matches(commit, search_string);
-    let num_matches = commit_match.total_matches;
-    _ = tx.send((commit_match, num_matches));
 }
 
 pub struct CommitMatcher {
@@ -101,47 +28,57 @@ struct FileMatches {
     matched_lines: usize,
 }
 
-impl MatchFormat for MatcherOutput {
-    fn print(&self) -> String {
-        let mut out = String::new();
-        out.push_str(&format!(
-            "Searched for: {}, total matches: {}\n",
-            self.search_string, self.total_matches
-        ));
-        self.commit_matches
-            .iter()
-            .for_each(|commit_match| out.push_str(&commit_match.print()));
-        out.trim().to_string()
+type ChannelData = (CommitMatcher, usize);
+
+pub fn do_the_matching(program: Program, search_string: String) -> MatcherOutput {
+    let (tx, rx) = sync::mpsc::channel::<ChannelData>();
+    let mut messages: usize = 0;
+    let search_arc = Arc::new(search_string.clone());
+
+    for commit in program.0.into_iter() {
+        messages += 1;
+        let sender = tx.clone();
+        let search_arc = search_arc.clone();
+
+        thread::spawn(|| {
+            if let Err(send_err) = thread_runner(commit, search_arc, sender) {
+                println!("{}", send_err);
+            }
+        });
     }
+
+    let mut commit_matches: Vec<CommitMatcher> = Vec::new();
+    let mut total_matches: usize = 0;
+    for _ in 0..messages {
+        match rx.recv() {
+            Ok((commit, num_matches)) => {
+                if num_matches > 0 { // TODO: add an option whether to show 0 result commits
+                    commit_matches.push(commit);
+                    total_matches += num_matches
+                }
+            }
+            Err(e) => panic!("{}", e),
+        }
+    }
+    return MatcherOutput {
+        commit_matches,
+        total_matches,
+        search_string,
+    };
 }
 
-impl MatchFormat for CommitMatcher {
-    fn print(&self) -> String {
-        let mut out = String::new();
-        out.push_str(&format!("for commit hash: {}\n", self.hash));
-        out.push_str(&format!("commit matches: {}\n", self.total_matches));
-        out.push_str("\n");
-        self.file_matches
-            .iter()
-            .for_each(|file_match| out.push_str(&file_match.print()));
-        out.push_str("\n");
-        out
-    }
-}
-
-impl MatchFormat for FileMatches {
-    fn print(&self) -> String {
-        let mut out = String::new();
-        out.push_str(&format!("files: {}\n", self.file_header));
-        out.push_str(&format!("file matches: {}\n", self.matched_lines));
-        out.push_str(&self.content);
-        out.push_str("\n");
-        out
-    }
+fn thread_runner(
+    commit: Commit,
+    search_string: Arc<String>,
+    tx: Sender<ChannelData>,
+) -> anyhow::Result<()> {
+    let commit_match = CommitMatcher::find_matches(commit, search_string);
+    let num_matches = commit_match.total_matches;
+    Ok(tx.send((commit_match, num_matches))?)
 }
 
 impl CommitMatcher {
-    fn find_matches(commit: Commit, search_string: String) -> Self {
+    fn find_matches(commit: Commit, search_string: Arc<String>) -> Self {
         let diff = std::process::Command::new("git")
             .args(["diff", &commit.hash])
             .output()
@@ -163,7 +100,7 @@ impl CommitMatcher {
                     continue;
                 }
                 for c in chunk.content.iter() {
-                    if c.line_data.contains(&search_string) {
+                    if c.line_data.contains(search_string.as_str()) {
                         out.push_str(&format!("{}\n", c.line_data));
                         matched_lines += 1;
                     }
@@ -178,11 +115,96 @@ impl CommitMatcher {
                 total_matches += matched_lines;
             }
         }
-
         CommitMatcher {
             hash: commit.hash.clone(),
             file_matches: matches,
             total_matches,
         }
+    }
+}
+
+pub trait MatchFormat {
+    fn print(&self) -> String;
+}
+
+impl MatchFormat for MatcherOutput {
+    fn print(&self) -> String {
+        let mut out = String::new();
+        out.push_str(&format!(
+            "{} \"{}\"\n{} {}\n\n",
+            FormatBuilder::new("Searched for:")
+                .color(Color::Green)
+                .add_style(Styles::Bold)
+                .build(),
+            self.search_string,
+            FormatBuilder::new("Total Matches:")
+                .color(Color::Green)
+                .add_style(Styles::Bold)
+                .build(),
+            self.total_matches
+        ));
+
+        self.commit_matches
+            .iter()
+            .for_each(|commit_match| out.push_str(&commit_match.print()));
+        out.trim().to_string()
+    }
+}
+
+impl MatchFormat for CommitMatcher {
+    fn print(&self) -> String {
+        let mut out = String::new();
+        out.push_str(&format!(
+            "{} {}\n",
+            FormatBuilder::new("For commit hash:")
+                .color(Color::Cyan)
+                .build(),
+            FormatBuilder::new(&self.hash)
+                .color(Color::Cyan)
+                .add_style(Styles::Bold)
+                .build()
+        ));
+        out.push_str(&format!(
+            "{} {}\n",
+            FormatBuilder::new("Commit matches:")
+                .color(Color::Cyan)
+                .build(),
+            FormatBuilder::new(&self.total_matches.to_string())
+                .color(Color::Cyan)
+                .add_style(Styles::Bold)
+                .build()
+        ));
+        out.push_str("\n");
+        self.file_matches
+            .iter()
+            .for_each(|file_match| out.push_str(&file_match.print()));
+        out.push_str("\n");
+        out
+    }
+}
+
+impl MatchFormat for FileMatches {
+    fn print(&self) -> String {
+        let mut out = String::new();
+        out.push_str(&format!(
+            "{}\n",
+            FormatBuilder::new(&self.file_header)
+                .add_style(Styles::Italic)
+                .color(Color::Green)
+                .build()
+        ));
+        out.push_str(&format!(
+            "{} {}\n",
+            FormatBuilder::new("File matches:")
+                .color(Color::Green)
+                .build(),
+            FormatBuilder::new(&self.matched_lines.to_string())
+                .add_style(Styles::Bold)
+                .color(Color::Green)
+                .build()
+        ));
+        out.push_str(&self.content);
+        out.push_str("\n");
+        out
     }
 }

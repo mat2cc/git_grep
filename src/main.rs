@@ -1,13 +1,14 @@
 mod diff;
 mod one_line;
 mod matcher;
+mod formatter;
 
 use clap::Parser;
 use std::{process::Command, time::Instant};
 
-use one_line::{lexer::Lexer, parser::Commit};
+use one_line::lexer::Lexer;
 
-use crate::{diff::{diff_lexer::DiffLexer, diff_parser::DiffParser}, matcher::{Matcher, MatchFormat, do_the_matching}};
+use crate::matcher::{MatchFormat, do_the_matching};
 
 #[derive(Parser)]
 #[command(author, about, version)]
@@ -40,8 +41,6 @@ fn main() {
 
     let now = Instant::now();
     let matcher = do_the_matching(program, cli.search);
-
-    // TODO: convert this to be multithreaded
 
     println!("{}", matcher.print());
     println!("time elapsed: {}", now.elapsed().as_millis());
