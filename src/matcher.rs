@@ -86,6 +86,15 @@ impl CommitMatcher {
 
         let str_diff = std::str::from_utf8(&diff.stdout).expect("couldn't read file");
 
+        // early exit if there is no content from the diff
+        if str_diff.len() == 0 {
+            return CommitMatcher {
+                hash: commit.hash.clone(),
+                file_matches: Vec::new(),
+                total_matches: 0,
+            };
+        }
+
         let diff_l = DiffLexer::new(str_diff.as_bytes().to_vec());
         let mut diff_p = DiffParser::new(diff_l);
         let diff_program = diff_p.parse_program();
