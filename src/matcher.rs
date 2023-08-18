@@ -1,12 +1,12 @@
 use std::{
-    sync::{self, mpsc::Sender, Arc},
+    sync::{self, Arc},
     thread,
 };
 
 use crate::{
     diff::{diff_lexer::DiffLexer, diff_parser::DiffParser},
     formatter::{Color, FormatBuilder, Styles},
-    one_line::parser::{Commit, Program},
+    one_line::parser::{Commit, Program}, Cli,
 };
 
 pub struct MatcherOutput {
@@ -23,62 +23,61 @@ pub struct CommitMatcher {
 
 #[derive(Debug)]
 struct FileMatches {
-    file_header: String,
+    file_a: String,
+    file_b: String,
     content: String,
     matched_lines: usize,
 }
 
 type ChannelData = (CommitMatcher, usize);
 
-pub fn do_the_matching(program: Program, search_string: String) -> MatcherOutput {
+pub fn do_the_matching(program: Program, args: Cli) -> MatcherOutput {
     let (tx, rx) = sync::mpsc::channel::<ChannelData>();
-    let mut messages: usize = 0;
-    let search_arc = Arc::new(search_string.clone());
+    let messages: usize = program.0.len();
+    let search_arc = Arc::new(args.clone());
 
     for commit in program.0.into_iter() {
-        messages += 1;
-        let sender = tx.clone();
+        let tx = tx.clone();
         let search_arc = search_arc.clone();
 
-        thread::spawn(|| {
-            if let Err(send_err) = thread_runner(commit, search_arc, sender) {
-                println!("{}", send_err);
-            }
+        thread::spawn(move || {
+            let commit_match = CommitMatcher::find_matches(commit, search_arc);
+            let num_matches = commit_match.total_matches;
+            _ = tx.send((commit_match, num_matches));
         });
     }
 
     let mut commit_matches: Vec<CommitMatcher> = Vec::new();
     let mut total_matches: usize = 0;
-    for _ in 0..messages {
-        match rx.recv() {
-            Ok((commit, num_matches)) => {
-                if num_matches > 0 { // TODO: add an option whether to show 0 result commits
-                    commit_matches.push(commit);
-                    total_matches += num_matches
-                }
-            }
-            Err(e) => panic!("{}", e),
+    let mut message_num: usize = 0;
+
+    for (commit, num_matches) in rx {
+        message_num += 1;
+        if num_matches > 0 { // TODO: add an option whether to show 0 result commits
+            commit_matches.push(commit);
+            total_matches += num_matches
+        }
+
+        if message_num >= messages {
+            break;
         }
     }
+
     return MatcherOutput {
         commit_matches,
         total_matches,
-        search_string,
+        search_string: args.search,
     };
 }
 
-fn thread_runner(
-    commit: Commit,
-    search_string: Arc<String>,
-    tx: Sender<ChannelData>,
-) -> anyhow::Result<()> {
-    let commit_match = CommitMatcher::find_matches(commit, search_string);
-    let num_matches = commit_match.total_matches;
-    Ok(tx.send((commit_match, num_matches))?)
+#[allow(dead_code)]
+enum CommitMatcherErrors {
+    DiffError(Vec<String>),
+    EmptyDiff
 }
 
 impl CommitMatcher {
-    fn find_matches(commit: Commit, search_string: Arc<String>) -> Self {
+    fn find_matches(commit: Commit, args: Arc<Cli>) -> Self {
         let diff = std::process::Command::new("git")
             .args(["diff", &commit.hash])
             .output()
@@ -101,23 +100,27 @@ impl CommitMatcher {
 
         let mut matches: Vec<FileMatches> = Vec::new();
         let mut total_matches: usize = 0;
-        for statement in diff_program.statements.iter() {
+        for statement in diff_program.statements.into_iter() {
             let mut out = String::new();
             let mut matched_lines: usize = 0;
             for chunk in statement.chunks.iter() {
                 if chunk.content.len() == 0 {
                     continue;
                 }
-                for c in chunk.content.iter() {
-                    if c.line_data.contains(search_string.as_str()) {
-                        out.push_str(&format!("{}\n", c.line_data));
+
+                // record which lines were captured
+                // also get the before/afetr context if requested
+                for c in 0..chunk.content.len() {
+                    if chunk.content[c].line_data.contains(args.search.as_str()) {
+                        out.push_str(&format!("{}\n", chunk.content[c].line_data));
                         matched_lines += 1;
                     }
                 }
             }
             if matched_lines > 0 {
                 matches.push(FileMatches {
-                    file_header: format!("diff: {} {}", statement.a_file, statement.b_file),
+                    file_a: statement.a_file,
+                    file_b: statement.b_file,
                     content: out,
                     matched_lines,
                 });
@@ -197,7 +200,7 @@ impl MatchFormat for FileMatches {
         let mut out = String::new();
         out.push_str(&format!(
             "{}\n",
-            FormatBuilder::new(&self.file_header)
+            FormatBuilder::new(&format!("diff: {} {}", &self.file_a, &self.file_b))
                 .add_style(Styles::Italic)
                 .color(Color::Green)
                 .build()
