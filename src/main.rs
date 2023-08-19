@@ -10,9 +10,9 @@ use one_line::lexer::Lexer;
 
 use crate::matcher::{MatchFormat, do_the_matching};
 
-#[derive(Parser, Clone)]
+#[derive(Parser)]
 #[command(author, about, version)]
-pub struct Cli {
+struct Cli {
     /// search string
     search: String,
     // path of the git repository
@@ -37,6 +37,24 @@ pub struct Cli {
     context: Option<usize>,
 }
 
+#[derive(Debug, Clone)]
+pub struct Options {
+    before_context: usize,
+    after_context: usize,
+    ignore_empty: bool,
+    search_string: String,
+}
+
+impl From<Cli> for Options {
+    fn from(cli: Cli) -> Self {
+        Self {
+            search_string: cli.search,
+            before_context: cli.before_context.unwrap_or(cli.context.unwrap_or(0)),
+            after_context: cli.after_context.unwrap_or(cli.context.unwrap_or(0)),
+            ignore_empty: cli.ignore_empty,
+        }
+    }
+}
 
 fn main() {
     let cli = Cli::parse();
@@ -53,7 +71,7 @@ fn main() {
     let program = p.parse_program();
 
     let now = Instant::now();
-    let matcher = do_the_matching(program, cli);
+    let matcher = do_the_matching(program, Options::from(cli));
 
     println!("{}", matcher.print());
     println!("time elapsed: {}", now.elapsed().as_millis());

@@ -6,7 +6,7 @@ use std::{
 use crate::{
     diff::{diff_lexer::DiffLexer, diff_parser::DiffParser},
     formatter::{Color, FormatBuilder, Styles},
-    one_line::parser::{Commit, Program}, Cli,
+    one_line::parser::{Commit, Program}, Options,
 };
 
 pub struct MatcherOutput {
@@ -31,17 +31,17 @@ struct FileMatches {
 
 type ChannelData = (CommitMatcher, usize);
 
-pub fn do_the_matching(program: Program, args: Cli) -> MatcherOutput {
+pub fn do_the_matching(program: Program, options: Options) -> MatcherOutput {
     let (tx, rx) = sync::mpsc::channel::<ChannelData>();
     let messages: usize = program.0.len();
-    let search_arc = Arc::new(args.clone());
+    let search_arc = Arc::new(options.clone());
 
     for commit in program.0.into_iter() {
         let tx = tx.clone();
-        let search_arc = search_arc.clone();
+        let options_arc = search_arc.clone();
 
         thread::spawn(move || {
-            let commit_match = CommitMatcher::find_matches(commit, search_arc);
+            let commit_match = CommitMatcher::find_matches(commit, options_arc);
             let num_matches = commit_match.total_matches;
             _ = tx.send((commit_match, num_matches));
         });
@@ -66,7 +66,7 @@ pub fn do_the_matching(program: Program, args: Cli) -> MatcherOutput {
     return MatcherOutput {
         commit_matches,
         total_matches,
-        search_string: args.search,
+        search_string: options.search_string,
     };
 }
 
@@ -77,9 +77,17 @@ enum CommitMatcherErrors {
 }
 
 impl CommitMatcher {
-    fn find_matches(commit: Commit, args: Arc<Cli>) -> Self {
+    fn find_matches(commit: Commit, options: Arc<Options>) -> Self {
+        let mut diff_args = vec!["diff", &commit.hash];
+        // get additional context from git diff if needed
+        let context_needed = options.before_context.max(options.after_context);
+        let with_context = &format!("-U{}", context_needed);
+        if context_needed > 0 {
+            diff_args.push(with_context);
+        }
+
         let diff = std::process::Command::new("git")
-            .args(["diff", &commit.hash])
+            .args(diff_args)
             .output()
             .expect(&format!("failed diff for commit {}", &commit.hash));
 
@@ -111,7 +119,7 @@ impl CommitMatcher {
                 // record which lines were captured
                 // also get the before/afetr context if requested
                 for c in 0..chunk.content.len() {
-                    if chunk.content[c].line_data.contains(args.search.as_str()) {
+                    if chunk.content[c].line_data.contains(options.search_string.as_str()) {
                         out.push_str(&format!("{}\n", chunk.content[c].line_data));
                         matched_lines += 1;
                     }
