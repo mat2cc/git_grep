@@ -46,7 +46,6 @@ pub fn do_the_matching(program: Program, options: Options) -> MatcherOutput {
             _ = tx.send((commit_match, num_matches));
         });
     }
-
     let mut commit_matches: Vec<CommitMatcher> = Vec::new();
     let mut total_matches: usize = 0;
     let mut message_num: usize = 0;
@@ -104,32 +103,19 @@ impl CommitMatcher {
 
         let diff_l = DiffLexer::new(str_diff.as_bytes().to_vec());
         let mut diff_p = DiffParser::new(diff_l);
-        let diff_program = diff_p.parse_program();
+        let diff_program = diff_p.parse_program(options.clone());
 
         let mut matches: Vec<FileMatches> = Vec::new();
         let mut total_matches: usize = 0;
-        for statement in diff_program.statements.into_iter() {
-            let mut out = String::new();
-            let mut matched_lines: usize = 0;
-            for chunk in statement.chunks.iter() {
-                if chunk.content.len() == 0 {
-                    continue;
-                }
 
-                // record which lines were captured
-                // also get the before/afetr context if requested
-                for c in 0..chunk.content.len() {
-                    if chunk.content[c].line_data.contains(options.search_string.as_str()) {
-                        out.push_str(&format!("{}\n", chunk.content[c].line_data));
-                        matched_lines += 1;
-                    }
-                }
-            }
+        for statement in diff_program.statements.into_iter() {
+            let (content, matched_lines) = statement.data.fmt(options.clone());
+
             if matched_lines > 0 {
                 matches.push(FileMatches {
                     file_a: statement.a_file,
                     file_b: statement.b_file,
-                    content: out,
+                    content,
                     matched_lines,
                 });
                 total_matches += matched_lines;

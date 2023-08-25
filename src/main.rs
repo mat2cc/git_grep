@@ -3,12 +3,18 @@ mod one_line;
 mod matcher;
 mod formatter;
 
-use clap::Parser;
+use clap::{Parser, ValueEnum};
 use std::{process::Command, time::Instant};
 
 use one_line::lexer::Lexer;
 
 use crate::matcher::{MatchFormat, do_the_matching};
+
+#[derive(ValueEnum, Clone, Debug)]
+enum StatementType {
+    Lines,
+    Chunks
+}
 
 #[derive(Parser)]
 #[command(author, about, version)]
@@ -19,9 +25,7 @@ struct Cli {
     // path: std::path::PathBuf,
     /// depth
     #[arg(short, long)]
-    depth: Option<usize>, // TODO: context, we should be able to grab context from the standard diff
-                          // however if context is too large, we might have to get the full diff rather than the
-                          // compressed one
+    depth: Option<usize>,
 
     /// Empty commits and files will not be printed
     #[arg(long)]
@@ -35,6 +39,9 @@ struct Cli {
 
     #[arg(short = 'C', long)]
     context: Option<usize>,
+
+    #[arg(value_enum, long)]
+    format: StatementType,
 }
 
 #[derive(Debug, Clone)]
@@ -43,6 +50,7 @@ pub struct Options {
     after_context: usize,
     ignore_empty: bool,
     search_string: String,
+    format: StatementType,
 }
 
 impl From<Cli> for Options {
@@ -52,6 +60,7 @@ impl From<Cli> for Options {
             before_context: cli.before_context.unwrap_or(cli.context.unwrap_or(0)),
             after_context: cli.after_context.unwrap_or(cli.context.unwrap_or(0)),
             ignore_empty: cli.ignore_empty,
+            format: cli.format,
         }
     }
 }
