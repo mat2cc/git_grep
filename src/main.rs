@@ -24,12 +24,12 @@ struct Cli {
     // path of the git repository
     // path: std::path::PathBuf,
     /// depth
-    #[arg(short, long)]
+    #[arg(short = 'D', long)]
     depth: Option<usize>,
 
-    /// Empty commits and files will not be printed
+    /// Empty commits and files will be printed
     #[arg(long)]
-    ignore_empty: bool,
+    show_empty: bool,
 
     #[arg(short = 'B', long)]
     before_context: Option<usize>,
@@ -40,17 +40,22 @@ struct Cli {
     #[arg(short = 'C', long)]
     context: Option<usize>,
 
-    #[arg(value_enum, long)]
+    #[arg(value_enum, long, default_value = "lines")]
     format: StatementType,
+
+    /// do not print the file name and the number of matches per file
+    #[arg(long)]
+    skip_file_print: bool
 }
 
 #[derive(Debug, Clone)]
 pub struct Options {
     before_context: usize,
     after_context: usize,
-    ignore_empty: bool,
+    show_empty: bool,
     search_string: String,
     format: StatementType,
+    skip_file_print: bool
 }
 
 impl From<Cli> for Options {
@@ -59,8 +64,9 @@ impl From<Cli> for Options {
             search_string: cli.search,
             before_context: cli.before_context.unwrap_or(cli.context.unwrap_or(0)),
             after_context: cli.after_context.unwrap_or(cli.context.unwrap_or(0)),
-            ignore_empty: cli.ignore_empty,
+            show_empty: cli.show_empty,
             format: cli.format,
+            skip_file_print: cli.skip_file_print
         }
     }
 }
@@ -80,8 +86,9 @@ fn main() {
     let program = p.parse_program();
 
     let now = Instant::now();
-    let matcher = do_the_matching(program, Options::from(cli));
+    let options = Options::from(cli);
+    let matcher = do_the_matching(program, options.clone());
 
-    println!("{}", matcher.print());
+    println!("{}", matcher.print(options));
     println!("time elapsed: {}", now.elapsed().as_millis());
 }

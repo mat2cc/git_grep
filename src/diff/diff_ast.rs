@@ -99,8 +99,9 @@ impl StatementTrait for LineStatement {
         for x in 0..self.0.len() {
             if lines[x] {
                 out.push_str(&format!("{}\n", &self.0[x].line_data));
-                if x + 1 < self.0.len() && lines[x + 1] {
-                    out.push_str("---\n"); // adding on spacer between context sections
+                // add a spacer when we have reached a break in context
+                if x + 1 < self.0.len() && !lines[x + 1] {
+                    out.push_str("---\n");
                 }
             }
         }
