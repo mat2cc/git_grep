@@ -5,8 +5,9 @@ use std::{
 
 use crate::{
     diff::{diff_lexer::DiffLexer, diff_parser::DiffParser},
-    formatter::{Color, FormatBuilder, Styles},
-    one_line::parser::Program, Options,
+    formatter::{ColorTrait, StyleTrait},
+    one_line::parser::Program,
+    Options,
 };
 
 pub struct MatcherOutput {
@@ -73,7 +74,7 @@ pub fn do_the_matching(program: Program, options: Options) -> MatcherOutput {
 #[allow(dead_code)]
 enum CommitMatcherErrors {
     DiffError(Vec<String>),
-    EmptyDiff
+    EmptyDiff,
 }
 
 impl CommitMatcher {
@@ -89,7 +90,9 @@ impl CommitMatcher {
         let diff = std::process::Command::new("git")
             .args(diff_args)
             .output()
-            .expect(&format!("failed diff for commits {older_commit}, {newer_commit}"));
+            .expect(&format!(
+                "failed diff for commits {older_commit}, {newer_commit}"
+            ));
 
         let str_diff = std::str::from_utf8(&diff.stdout).expect("couldn't read file");
 
@@ -139,26 +142,18 @@ impl MatchFormat for MatcherOutput {
         let mut out = String::new();
         out.push_str(&format!(
             "{} \"{}\"\n{} {}\n\n",
-            FormatBuilder::new("Searched for:")
-                .color(Color::Green)
-                .add_style(Styles::Bold)
-                .build(),
+            "Searched For".green().bold(),
             self.search_string,
-            FormatBuilder::new("Total Matches:")
-                .color(Color::Green)
-                .add_style(Styles::Bold)
-                .build(),
+            "Total Matches:".green().bold(),
             self.total_matches
         ));
 
-        self.commit_matches
-            .iter()
-            .for_each(|commit_match| {
-                if !options.show_empty && commit_match.total_matches == 0 {
-                    return;
-                }
-                out.push_str(&commit_match.print(options.clone()))
-            });
+        self.commit_matches.iter().for_each(|commit_match| {
+            if !options.show_empty && commit_match.total_matches == 0 {
+                return;
+            }
+            out.push_str(&commit_match.print(options.clone()))
+        });
         out.trim().to_string()
     }
 }
@@ -168,33 +163,21 @@ impl MatchFormat for CommitMatcher {
         let mut out = String::new();
         out.push_str(&format!(
             "{} {}\n",
-            FormatBuilder::new("For commit hash:")
-                .color(Color::Cyan)
-                .build(),
-            FormatBuilder::new(&self.hash)
-                .color(Color::Cyan)
-                .add_style(Styles::Bold)
-                .build()
+            "For commit hash:".cyan(),
+            &self.hash.green().bold(),
         ));
         out.push_str(&format!(
             "{} {}\n",
-            FormatBuilder::new("Commit matches:")
-                .color(Color::Cyan)
-                .build(),
-            FormatBuilder::new(&self.total_matches.to_string())
-                .color(Color::Cyan)
-                .add_style(Styles::Bold)
-                .build()
+            "Commit matches:".cyan(),
+            &self.total_matches.to_string().cyan().bold(),
         ));
         out.push_str("\n");
-        self.file_matches
-            .iter()
-            .for_each(|file_match| {
-                if !options.show_empty && file_match.matched_lines == 0 {
-                    return;
-                }
-                out.push_str(&file_match.print(options.clone()))
-            });
+        self.file_matches.iter().for_each(|file_match| {
+            if !options.show_empty && file_match.matched_lines == 0 {
+                return;
+            }
+            out.push_str(&file_match.print(options.clone()))
+        });
         out.push_str("\n");
         out
     }
@@ -203,24 +186,19 @@ impl MatchFormat for CommitMatcher {
 impl MatchFormat for FileMatches {
     fn print(&self, options: Options) -> String {
         let mut out = String::new();
-        if !options.skip_file_print { // print file details
+        if !options.skip_file_print {
+            // print file details
             out.push_str(&format!(
-                    "{}\n",
-                    FormatBuilder::new(&format!("diff: {} {}", &self.file_a, &self.file_b))
-                    .add_style(Styles::Italic)
-                    .color(Color::Green)
-                    .build()
-                    ));
+                "{}\n",
+                format!("diff: {} {}", &self.file_a, &self.file_b)
+                    .green()
+                    .italic(),
+            ));
             out.push_str(&format!(
-                    "{} {}\n",
-                    FormatBuilder::new("File matches:")
-                    .color(Color::Green)
-                    .build(),
-                    FormatBuilder::new(&self.matched_lines.to_string())
-                    .add_style(Styles::Bold)
-                    .color(Color::Green)
-                    .build()
-                    ));
+                "{} {}\n",
+                "File matches:".green(),
+                &self.matched_lines.to_string().green().bold(),
+            ));
         }
         out.push_str(&self.content);
         out.push_str("\n");

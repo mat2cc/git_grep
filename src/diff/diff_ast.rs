@@ -30,6 +30,16 @@ impl Default for ContentType {
     }
 }
 
+impl ToString for ContentType {
+    fn to_string(&self) -> String {
+        match self {
+            ContentType::Add => "+".to_string(),
+            ContentType::Remove => "-".to_string(),
+            ContentType::Neutral => " ".to_string(),
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Clone)]
 pub struct Content {
     pub line_data: String,
@@ -90,7 +100,7 @@ impl StatementTrait for LineStatement {
         let mut matched_lines = 0;
         let mut lines = vec![false; self.0.len()];
         for (idx, l) in self.0.iter().enumerate() {
-            if l.line_data.contains(&options.search_string) {
+            if l.c_type != ContentType::Neutral && l.line_data.contains(&options.search_string) {
                 matched_lines += 1;
                 add_context(&mut lines, idx, options.before_context, options.after_context);
             }
@@ -98,10 +108,10 @@ impl StatementTrait for LineStatement {
 
         for x in 0..self.0.len() {
             if lines[x] {
-                out.push_str(&format!("{}\n", &self.0[x].line_data));
+                out.push_str(&format!("{}\t{}\n", &self.0[x].c_type.to_string(), &self.0[x].line_data));
                 // add a spacer when we have reached a break in context
                 if x + 1 < self.0.len() && !lines[x + 1] {
-                    out.push_str("---\n");
+                    out.push_str("\n");
                 }
             }
         }
