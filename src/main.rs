@@ -55,7 +55,7 @@ pub struct Options {
     show_empty: bool,
     search_string: String,
     format: StatementType,
-    skip_file_print: bool
+    skip_file_print: bool,
 }
 
 impl From<Cli> for Options {
@@ -66,7 +66,7 @@ impl From<Cli> for Options {
             after_context: cli.after_context.unwrap_or(cli.context.unwrap_or(0)),
             show_empty: cli.show_empty,
             format: cli.format,
-            skip_file_print: cli.skip_file_print
+            skip_file_print: cli.skip_file_print,
         }
     }
 }

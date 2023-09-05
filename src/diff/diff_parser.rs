@@ -7,10 +7,6 @@ use super::{
     diff_lexer::{DiffLexer, DiffToken},
 };
 
-enum Error {
-    ExpectTokenError(String),
-}
-
 pub struct DiffParser {
     l: DiffLexer,
     curr_token: DiffToken,

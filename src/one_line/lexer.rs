@@ -22,12 +22,10 @@ impl From<&str> for Token {
         match s {
             "HEAD" => Token::Head,
             s if s.len() == 40 && s.bytes().all(|x| x.is_ascii_hexdigit()) => Token::Hash(s.into()),
-            _ => Token::Word(s.into())
+            _ => Token::Word(s.into()),
         }
     }
 }
-
-
 
 pub struct Lexer {
     input: Vec<u8>,
@@ -37,16 +35,6 @@ pub struct Lexer {
 
 impl Lexer {
     pub fn new(input: Vec<u8>) -> Self {
-        Self {
-            ch: input[0],
-            input,
-            pos: 0,
-        }
-    }
-
-
-    pub fn new_from_string(s: String) -> Self {
-        let input = s.into_bytes();
         Self {
             ch: input[0],
             input,
@@ -107,6 +95,17 @@ impl Lexer {
 }
 #[cfg(test)]
 mod tests {
+    impl Lexer {
+        pub fn new_from_string(s: String) -> Self {
+            let input = s.into_bytes();
+            Self {
+                ch: input[0],
+                input,
+                pos: 0,
+            }
+        }
+    }
+
     use super::{Lexer, Token};
 
     #[test]

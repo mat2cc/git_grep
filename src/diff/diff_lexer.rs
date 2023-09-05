@@ -1,17 +1,4 @@
-#![allow(dead_code)]
-
 use std::fmt::Display;
-pub enum Diff {
-    Add,
-    Remove,
-    Neutral,
-}
-
-struct DiffLine {
-    diff: Diff,
-    content: String,
-}
-
 #[derive(Debug, PartialEq)]
 pub enum DiffToken {
     Word(String),
@@ -79,15 +66,6 @@ pub struct DiffLexer {
 
 impl DiffLexer {
     pub fn new(input: Vec<u8>) -> Self {
-        Self {
-            ch: input[0],
-            input,
-            pos: 0,
-        }
-    }
-
-    pub fn new_from_string(s: String) -> Self {
-        let input = s.into_bytes();
         Self {
             ch: input[0],
             input,
@@ -213,6 +191,17 @@ impl DiffLexer {
 }
 #[cfg(test)]
 mod tests {
+    impl DiffLexer {
+        pub fn new_from_string(s: String) -> Self {
+            let input = s.into_bytes();
+            Self {
+                ch: input[0],
+                input,
+                pos: 0,
+            }
+        }
+    }
+
     use super::{DiffLexer, DiffToken};
 
     #[test]

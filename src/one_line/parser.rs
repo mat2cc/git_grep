@@ -132,7 +132,7 @@ a42cc2e1c21d71ce016b5b878b4b1ac801a5fb83 feat: parsing done
 b132603284b4de2895031cf3eaa118f746abb13a feat: ast implemented
 16d7df69c7e3d102952dcde48a2a85a663710431 interepreter"#;
 
-        let l = Lexer::new_from_string(input.clone().into());
+        let l = Lexer::new(input.to_string().into_bytes());
         // let mut lex2 = Lexer::new(input.into());
         // loop {
         //     match lex2.next_token() {

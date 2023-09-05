@@ -142,9 +142,9 @@ impl MatchFormat for MatcherOutput {
         let mut out = String::new();
         out.push_str(&format!(
             "{} \"{}\"\n{} {}\n\n",
-            "Searched For".green().bold(),
+            "Searched For".cyan().bold(),
             self.search_string,
-            "Total Matches:".green().bold(),
+            "Total Matches:".cyan().bold(),
             self.total_matches
         ));
 
@@ -164,7 +164,7 @@ impl MatchFormat for CommitMatcher {
         out.push_str(&format!(
             "{} {}\n",
             "For commit hash:".cyan(),
-            &self.hash.green().bold(),
+            &self.hash.cyan().bold(),
         ));
         out.push_str(&format!(
             "{} {}\n",
@@ -191,13 +191,13 @@ impl MatchFormat for FileMatches {
             out.push_str(&format!(
                 "{}\n",
                 format!("diff: {} {}", &self.file_a, &self.file_b)
-                    .green()
+                    .cyan()
                     .italic(),
             ));
             out.push_str(&format!(
                 "{} {}\n",
-                "File matches:".green(),
-                &self.matched_lines.to_string().green().bold(),
+                "File matches:".cyan(),
+                &self.matched_lines.to_string().cyan().bold(),
             ));
         }
         out.push_str(&self.content);

@@ -1,18 +1,19 @@
-use std::sync::Arc;
 use std::boxed::Box;
+use std::sync::Arc;
 
+use crate::formatter::{ColorTrait, StyleTrait};
 use crate::Options;
 
-pub struct Program{
+pub struct Program {
     pub statements: Vec<Statement>,
-    pub errors: Vec<String>
+    pub errors: Vec<String>,
 }
 
 impl Program {
-    pub fn new () -> Self {
+    pub fn new() -> Self {
         Self {
             statements: Vec::new(),
-            errors: Vec::new()
+            errors: Vec::new(),
         }
     }
 }
@@ -21,7 +22,7 @@ impl Program {
 pub enum ContentType {
     Add,
     Remove,
-    Neutral
+    Neutral,
 }
 
 impl Default for ContentType {
@@ -43,7 +44,29 @@ impl ToString for ContentType {
 #[derive(Debug, PartialEq, Clone)]
 pub struct Content {
     pub line_data: String,
-    pub c_type: ContentType
+    pub c_type: ContentType,
+}
+
+impl Content {
+    fn fmt(&self, search_string: &str) -> String {
+        let out_line = format!("{}\t{}\n", self.c_type.to_string(), self.line_data);
+        if self.c_type == ContentType::Neutral {
+            return out_line;
+        }
+
+        let colorize = |s: &str| match self.c_type {
+            ContentType::Add => s.green(),
+            ContentType::Remove => s.red(),
+            _ => unreachable!(),
+        };
+        let out_line = out_line
+            .split(search_string)
+            .map(|x| colorize(x))
+            .collect::<Vec<String>>()
+            .join(&search_string.bold());
+
+        return out_line;
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -52,7 +75,7 @@ pub struct Chunk {
     pub added_changes: usize,
     pub removed_start: usize,
     pub removed_changes: usize,
-    pub content: Vec<Content>
+    pub content: Vec<Content>,
 }
 
 /* STATEMENTS */
@@ -63,10 +86,10 @@ pub trait StatementTrait {
 }
 
 // #[derive(Debug, PartialEq)]
-pub struct Statement{
+pub struct Statement {
     pub a_file: String,
     pub b_file: String,
-    pub data: Box<dyn StatementTrait>
+    pub data: Box<dyn StatementTrait>,
 }
 
 #[derive(Debug, PartialEq)]
@@ -102,13 +125,18 @@ impl StatementTrait for LineStatement {
         for (idx, l) in self.0.iter().enumerate() {
             if l.c_type != ContentType::Neutral && l.line_data.contains(&options.search_string) {
                 matched_lines += 1;
-                add_context(&mut lines, idx, options.before_context, options.after_context);
+                add_context(
+                    &mut lines,
+                    idx,
+                    options.before_context,
+                    options.after_context,
+                );
             }
         }
 
         for x in 0..self.0.len() {
             if lines[x] {
-                out.push_str(&format!("{}\t{}\n", &self.0[x].c_type.to_string(), &self.0[x].line_data));
+                out.push_str(&self.0[x].fmt(&options.search_string));
                 // add a spacer when we have reached a break in context
                 if x + 1 < self.0.len() && !lines[x + 1] {
                     out.push_str("\n");
@@ -122,11 +150,12 @@ impl StatementTrait for LineStatement {
 
 fn add_context(mut lines: &mut Vec<bool>, idx: usize, pre_context: usize, post_context: usize) {
     lines[idx] = true;
-    if pre_context > 0 && idx > 0 { // make sure we have more pre-context, and we stay in bounds
+    if pre_context > 0 && idx > 0 {
+        // make sure we have more pre-context, and we stay in bounds
         add_context(&mut lines, idx - 1, pre_context - 1, post_context);
     }
-    if post_context > 0 && idx + 1 < lines.len() { // make sure we have more post-context, and we stay in bounds
+    if post_context > 0 && idx + 1 < lines.len() {
+        // make sure we have more post-context, and we stay in bounds
         add_context(&mut lines, idx + 1, pre_context, post_context - 1);
     }
 }
-
