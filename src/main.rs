@@ -72,12 +72,16 @@ impl From<Cli> for Options {
 }
 
 fn main() {
+    let now = Instant::now();
     let cli = Cli::parse();
     let mut a = Command::new("git");
     a.arg("log");
     a.arg("--pretty=oneline");
     if let Some(depth) = cli.depth {
-        a.args(["-n", &depth.to_string()]);
+        if depth == 0 {
+            panic!("depth must be greater than 0");
+        }
+        a.args(["-n", &(depth + 1).to_string()]); // +1 because the first line is the HEAD
     }
 
     let o = a.output().expect("failed command");
@@ -85,7 +89,6 @@ fn main() {
     let mut p = one_line::parser::Parser::new(l);
     let program = p.parse_program();
 
-    let now = Instant::now();
     let options = Options::from(cli);
     let matcher = do_the_matching(program, options.clone());
 
