@@ -17,7 +17,8 @@ pub struct MatcherOutput {
 }
 
 pub struct CommitMatcher {
-    hash: String,
+    current_hash: String,
+    previous_hash: String,
     file_matches: Vec<FileMatches>,
     total_matches: usize,
 }
@@ -42,10 +43,10 @@ pub fn do_the_matching(program: Program, options: Options) -> MatcherOutput {
         let options_arc = options_arc.clone();
 
         let current_hash = program.0[c_idx].hash.clone();
-        let prev_hash = program.0[c_idx - 1].hash.clone();
+        let previous_hash = program.0[c_idx - 1].hash.clone();
 
         thread::spawn(move || {
-            let commit_match = CommitMatcher::find_matches(prev_hash, current_hash, options_arc);
+            let commit_match = CommitMatcher::find_matches(previous_hash, current_hash, options_arc);
             let num_matches = commit_match.total_matches;
             _ = tx.send((commit_match, num_matches));
         });
@@ -78,8 +79,8 @@ enum CommitMatcherErrors {
 }
 
 impl CommitMatcher {
-    fn find_matches(older_commit: String, newer_commit: String, options: Arc<Options>) -> Self {
-        let mut diff_args = vec!["diff", &older_commit, &newer_commit];
+    fn find_matches(previous_commit: String, current_commit: String, options: Arc<Options>) -> Self {
+        let mut diff_args = vec!["diff", &previous_commit, &current_commit];
         // get additional context from git diff if needed
         let context_needed = options.before_context.max(options.after_context);
         let with_context = &format!("-U{}", context_needed);
@@ -91,7 +92,7 @@ impl CommitMatcher {
             .args(diff_args)
             .output()
             .expect(&format!(
-                "failed diff for commits {older_commit}, {newer_commit}"
+                "failed diff for commits {previous_commit}, {current_commit}",
             ));
 
         let str_diff = std::str::from_utf8(&diff.stdout).expect("couldn't read file");
@@ -99,7 +100,8 @@ impl CommitMatcher {
         // early exit if there is no content from the diff
         if str_diff.len() == 0 {
             return CommitMatcher {
-                hash: newer_commit.to_string(),
+                current_hash: current_commit.to_string(),
+                previous_hash: previous_commit.to_string(),
                 file_matches: Vec::new(),
                 total_matches: 0,
             };
@@ -126,7 +128,8 @@ impl CommitMatcher {
             }
         }
         CommitMatcher {
-            hash: newer_commit.to_string(),
+            current_hash: current_commit.to_string(),
+            previous_hash: previous_commit.to_string(),
             file_matches: matches,
             total_matches,
         }
@@ -162,9 +165,10 @@ impl MatchFormat for CommitMatcher {
     fn print(&self, options: Options) -> String {
         let mut out = String::new();
         out.push_str(&format!(
-            "{} {}\n",
-            "For commit hash:".cyan(),
-            &self.hash.cyan().bold(),
+            "{} {} {}\n",
+            "git diff".cyan(),
+            &self.previous_hash.cyan().bold(),
+            &self.current_hash.cyan().bold(),
         ));
         out.push_str(&format!(
             "{} {}\n",
