@@ -45,8 +45,11 @@ pub fn do_the_matching(program: Program, options: Options) -> MatcherOutput {
         let current_hash = program.0[c_idx].hash.clone();
         let previous_hash = program.0[c_idx - 1].hash.clone();
 
+        println!("{current_hash} {previous_hash}");
+
         thread::spawn(move || {
-            let commit_match = CommitMatcher::find_matches(previous_hash, current_hash, options_arc);
+            let commit_match =
+                CommitMatcher::find_matches(current_hash, previous_hash, options_arc);
             let num_matches = commit_match.total_matches;
             _ = tx.send((commit_match, num_matches));
         });
@@ -79,8 +82,12 @@ enum CommitMatcherErrors {
 }
 
 impl CommitMatcher {
-    fn find_matches(previous_commit: String, current_commit: String, options: Arc<Options>) -> Self {
-        let mut diff_args = vec!["diff", &previous_commit, &current_commit];
+    fn find_matches(
+        current_commit: String,
+        previous_commit: String,
+        options: Arc<Options>,
+    ) -> Self {
+        let mut diff_args = vec!["diff", &current_commit, &previous_commit];
         // get additional context from git diff if needed
         let context_needed = options.before_context.max(options.after_context);
         let with_context = &format!("-U{}", context_needed);
@@ -92,7 +99,7 @@ impl CommitMatcher {
             .args(diff_args)
             .output()
             .expect(&format!(
-                "failed diff for commits {previous_commit}, {current_commit}",
+                "failed diff for commits {current_commit}, {previous_commit}",
             ));
 
         let str_diff = std::str::from_utf8(&diff.stdout).expect("couldn't read file");
@@ -109,13 +116,13 @@ impl CommitMatcher {
 
         let diff_l = DiffLexer::new(str_diff.as_bytes().to_vec());
         let mut diff_p = DiffParser::new(diff_l);
-        let diff_program = diff_p.parse_program(options.clone());
+        let diff_program = diff_p.parse_program();
 
         let mut matches: Vec<FileMatches> = Vec::new();
         let mut total_matches: usize = 0;
 
         for statement in diff_program.statements.into_iter() {
-            let (content, matched_lines) = statement.data.fmt(options.clone());
+            let (content, matched_lines) = statement.fmt(options.clone());
 
             if matched_lines > 0 {
                 matches.push(FileMatches {
@@ -167,8 +174,8 @@ impl MatchFormat for CommitMatcher {
         out.push_str(&format!(
             "{} {} {}\n",
             "git diff".cyan(),
-            &self.previous_hash.cyan().bold(),
             &self.current_hash.cyan().bold(),
+            &self.previous_hash.cyan().bold(),
         ));
         out.push_str(&format!(
             "{} {}\n",

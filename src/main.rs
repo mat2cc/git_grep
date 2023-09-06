@@ -40,9 +40,6 @@ struct Cli {
     #[arg(short = 'C', long)]
     context: Option<usize>,
 
-    #[arg(value_enum, long, default_value = "lines")]
-    format: StatementType,
-
     /// do not print the file name and the number of matches per file
     #[arg(long)]
     skip_file_print: bool
@@ -54,7 +51,6 @@ pub struct Options {
     after_context: usize,
     show_empty: bool,
     search_string: String,
-    format: StatementType,
     skip_file_print: bool,
 }
 
@@ -65,7 +61,6 @@ impl From<Cli> for Options {
             before_context: cli.before_context.unwrap_or(cli.context.unwrap_or(0)),
             after_context: cli.after_context.unwrap_or(cli.context.unwrap_or(0)),
             show_empty: cli.show_empty,
-            format: cli.format,
             skip_file_print: cli.skip_file_print,
         }
     }

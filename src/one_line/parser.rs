@@ -1,32 +1,12 @@
 use super::lexer::{Lexer, Token};
-
 pub struct Program(pub Vec<Commit>);
-
-impl Program {
-    pub fn print(&self) -> String {
-        let mut out = String::new();
-        for c in &self.0 {
-            out.push_str(&c.print());
-        }
-        out
-    }
-}
 
 pub struct Commit {
     pub hash: String,
+    #[allow(dead_code)]
     message: String,
+    #[allow(dead_code)]
     head: Option<Vec<String>>,
-}
-
-impl Commit {
-    pub fn print(&self) -> String {
-        let head = self.head.clone().unwrap_or_default();
-        let mut head = head.join(" ");
-        if !head.is_empty() {
-            head = format!("  (HEAD -> {})", head);
-        }
-        format!("{}{} {}", self.hash, head, self.message)
-    }
 }
 
 pub struct Parser {
@@ -99,7 +79,7 @@ impl Parser {
                     self.next_token()
                 }
                 Token::RParen => break,
-                _ => self.next_token()
+                _ => self.next_token(),
             }
         }
         self.next_token();
@@ -121,7 +101,28 @@ impl Parser {
 
 #[cfg(test)]
 mod tests {
-    use super::{Lexer, Parser};
+    use super::{Commit, Lexer, Parser, Program};
+
+    impl Program {
+        pub fn print(&self) -> String {
+            let mut out = String::new();
+            for c in &self.0 {
+                out.push_str(&c.print());
+            }
+            out
+        }
+    }
+
+    impl Commit {
+        pub fn print(&self) -> String {
+            let head = self.head.clone().unwrap_or_default();
+            let mut head = head.join(" ");
+            if !head.is_empty() {
+                head = format!("  (HEAD -> {})", head);
+            }
+            format!("{}{} {}", self.hash, head, self.message)
+        }
+    }
 
     #[test]
     fn parsing() {
@@ -133,13 +134,6 @@ b132603284b4de2895031cf3eaa118f746abb13a feat: ast implemented
 16d7df69c7e3d102952dcde48a2a85a663710431 interepreter"#;
 
         let l = Lexer::new(input.to_string().into_bytes());
-        // let mut lex2 = Lexer::new(input.into());
-        // loop {
-        //     match lex2.next_token() {
-        //         Token::EOF => break,
-        //         x => println!("{:?}", x)
-        //     }
-        // }
         let mut p = Parser::new(l);
         let program = p.parse_program();
         println!("{}", program.print());
