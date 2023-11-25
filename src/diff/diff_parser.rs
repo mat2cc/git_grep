@@ -8,22 +8,27 @@ pub struct DiffParser {
     l: DiffLexer,
     curr_token: DiffToken,
     peek_token: DiffToken,
+    pre_whitespace: usize,
+    peek_whitespace: usize,
 }
 
 impl DiffParser {
     pub fn new(mut l: DiffLexer) -> Self {
-        let curr_token = l.next_token();
-        let peek_token = l.next_token();
+        let (_, curr_token) = l.next_token();
+        let (_, peek_token) = l.next_token();
         Self {
             l,
             curr_token,
             peek_token,
+            pre_whitespace: 0,
+            peek_whitespace: 0,
         }
     }
 
     fn next_token(&mut self) {
         self.curr_token = std::mem::take(&mut self.peek_token);
-        self.peek_token = self.l.next_token();
+        self.pre_whitespace = std::mem::take(&mut self.peek_whitespace);
+        (self.peek_whitespace, self.peek_token) = self.l.next_token();
     }
 
     fn skip_until(&mut self, t: DiffToken) {
@@ -78,6 +83,7 @@ impl DiffParser {
             && !(self.curr_token == DiffToken::Diff && self.peek_token == DiffToken::Git)
         {
             let sub_str = self.curr_token.to_string();
+            s.push(format!("{}", " ".repeat(self.pre_whitespace)));
             if !sub_str.is_empty() {
                 s.push(sub_str);
             }
@@ -88,7 +94,7 @@ impl DiffParser {
         }
 
         return Some(Content {
-            line_data: s.join(" "),
+            line_data: s.join(""),
             c_type,
         });
     }
@@ -122,6 +128,12 @@ impl DiffParser {
         content_list
     }
 
+    fn skip_until_newline(&mut self) {
+        while self.curr_token != DiffToken::NewLine && self.curr_token != DiffToken::EOF {
+            self.next_token();
+        }
+    }
+
     fn parse_chunk(&mut self) -> Result<Chunk, String> {
         self.expect_token(DiffToken::ChunkMarker)?;
         self.expect_token(DiffToken::Dash)?;
@@ -129,6 +141,7 @@ impl DiffParser {
         self.expect_token(DiffToken::Plus)?;
         let (added_start, added_changes) = self.parse_diff_chunk_range()?;
         self.expect_token(DiffToken::ChunkMarker)?;
+        self.skip_until_newline(); // don't include the chunk context as it's not part of the diff
 
         let content = self.parse_content();
 
@@ -182,6 +195,118 @@ impl DiffParser {
         }
 
         program
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::diff::diff_ast::{Content, ContentType, Statement};
+
+    use super::{DiffLexer, DiffParser};
+
+    #[test]
+    fn parser_spacing_test() {
+        let input = r#"diff --git a/src/ast.rs b/src/ast.rs
+deleted file mode 100644
+index 318bd87..0000000
+--- a/src/ast.rs
++++ /dev/null
+@@ -1,8 +0,0 @@
++use super::diff_ast::{Content, ContentType, Statement};
+-  indentTwo
+-    indentFour
+-	tabIndent
+}"#;
+        use ContentType::*;
+        let match_statements = vec![Statement {
+            a_file: String::from("a/src/ast.rs"),
+            b_file: String::from("b/src/ast.rs"),
+            data: vec![
+                Content {
+                    line_data: String::from("use super::diff_ast::{Content, ContentType, Statement};"),
+                    c_type: Add,
+                },
+                Content {
+                    line_data: String::from("  indentTwo"),
+                    c_type: Remove,
+                },
+                Content {
+                    line_data: String::from("    indentFour"),
+                    c_type: Remove,
+                },
+                Content {
+                    line_data: String::from("    tabIndent"),
+                    c_type: Remove,
+                },
+                Content {
+                    line_data: String::from("}"),
+                    c_type: Neutral,
+                },
+            ],
+        }];
+        let l = DiffLexer::new_from_string(input.into());
+        let mut t = DiffParser::new(l);
+        let p = t.parse_program();
+
+        assert_eq!(p.errors.len(), 0);
+        assert_eq!(p.statements, match_statements);
+    }
+
+    #[test]
+    fn happy_path() {
+        let input = r#"diff --git a/src/ast.rs b/src/ast.rs
+deleted file mode 100644
+index 318bd87..0000000
+--- a/src/ast.rs
++++ /dev/null
+@@ -1,8 +0,0 @@
+-enum Ast {
+     Testing // @@ a
+-}
+@@ -10,80 +10,60 @@
+-enum Test {
++    Hi
+-}
+"#;
+
+        use ContentType::*;
+        let match_statements = vec![Statement {
+            a_file: String::from("a/src/ast.rs"),
+            b_file: String::from("b/src/ast.rs"),
+            data: vec![
+                Content {
+                    line_data: String::from("enum Ast {"),
+                    c_type: Remove,
+                },
+                Content {
+                    line_data: String::from("     Testing // @@ a"), // 5 spaces here since the
+                                                                     // content type is neutral
+                    c_type: Neutral,
+                },
+                Content {
+                    line_data: String::from("}"),
+                    c_type: Remove,
+                },
+                Content {
+                    line_data: String::from("enum Test {"),
+                    c_type: Remove,
+                },
+                Content {
+                    line_data: String::from("    Hi"), // 4 spaces
+                    c_type: Add,
+                },
+                Content {
+                    line_data: String::from("}"),
+                    c_type: Remove,
+                },
+            ],
+        }];
+        let l = DiffLexer::new_from_string(input.into());
+        let mut t = DiffParser::new(l);
+        let p = t.parse_program();
+
+        assert_eq!(p.errors.len(), 0);
+        assert_eq!(p.statements, match_statements);
     }
 }
 

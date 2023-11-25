@@ -23,7 +23,7 @@ pub enum DiffToken {
 impl Display for DiffToken {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            DiffToken::Word(w) => write!(f, "{}", w.trim()),
+            DiffToken::Word(w) => write!(f, "{}", w),
             DiffToken::Int(i) => write!(f, "{i}"),
             DiffToken::Diff => write!(f, "diff"),
             DiffToken::Git => write!(f, "--git"),
@@ -89,10 +89,17 @@ impl DiffLexer {
         }
     }
 
-    fn skip_whitespace(&mut self) {
+    fn count_whitespace(&mut self) -> usize {
+        let mut count = 0;
         while self.ch.is_ascii_whitespace() && self.ch != b'\n' {
-            self.read_char()
+            if self.ch == b'\t' {
+                count += 4;
+            } else {
+                count += 1
+            }
+            self.read_char();
         }
+        count
     }
 
     fn read_word(&mut self) -> DiffToken {
@@ -157,36 +164,36 @@ impl DiffLexer {
         }
     }
 
-    pub fn next_token(&mut self) -> DiffToken {
-        self.skip_whitespace();
+    pub fn next_token(&mut self) -> (usize, DiffToken) {
+        let ws = self.count_whitespace();
 
         let t = match self.ch {
             b'\0' => DiffToken::EOF,
             b'\n' => DiffToken::NewLine,
             b',' => DiffToken::Comma,
-            b'-' => return self.match_dash(),
+            b'-' => return (ws, self.match_dash()),
             b'+' => {
                 if self.check_word("+++") {
                     self.read_multiple(3);
-                    return DiffToken::TriplePlus;
+                    return (ws, DiffToken::TriplePlus);
                 } else {
                     self.read_char();
-                    return DiffToken::Plus;
+                    return (ws, DiffToken::Plus);
                 }
             }
             rest if rest.is_ascii_digit() => {
                 if self.is_entire_int() {
-                    return self.read_int();
+                    return (ws, self.read_int());
                 } else {
-                    return self.read_word();
+                    return (ws, self.read_word());
                 }
             }
-            rest if rest.is_ascii() => return self.read_word(),
+            rest if rest.is_ascii() => return (ws, self.read_word()),
             _ => DiffToken::Illegal,
         };
 
         self.read_char();
-        t
+        (ws, t)
     }
 }
 #[cfg(test)]
@@ -203,6 +210,53 @@ mod tests {
     }
 
     use super::{DiffLexer, DiffToken};
+
+    #[test]
+    fn testing_spacing() {
+        let input = r#"-enum AST {
++use super::diff_ast::{Content, ContentType, Statement};
+-  indentTwo
+-    indentFour
+-	tabIndent
+}"#;
+// +
+// +impl Content {
+// +    pub fn fmt(&self, search_string: &str) -> String {
+
+        use DiffToken::*;
+        let output = vec![
+            (0, Dash),
+            (0, Word(String::from("enum"))),
+            (1, Word(String::from("AST"))),
+            (1, Word(String::from("{"))),
+            (0, NewLine),
+            (0, Plus),
+            (0, Word(String::from("use"))),
+            (1, Word(String::from("super::diff_ast::{Content"))),
+            (0, Comma),
+            (1, Word(String::from("ContentType"))),
+            (0, Comma),
+            (1, Word(String::from("Statement};"))),
+            (0, NewLine),
+            (0, Dash),
+            (2, Word(String::from("indentTwo"))),
+            (0, NewLine),
+            (0, Dash),
+            (4, Word(String::from("indentFour"))),
+            (0, NewLine),
+            (0, Dash),
+            (4, Word(String::from("tabIndent"))),
+            (0, NewLine),
+            (0, Word(String::from("}"))),
+        ];
+
+        let mut l = DiffLexer::new_from_string(input.into());
+        println!("testing tokens");
+        for out in output {
+            let token = l.next_token();
+            assert_eq!(out, token);
+        }
+    }
 
     #[test]
     fn tokenize() {
@@ -261,8 +315,7 @@ diff
 
         let mut l = DiffLexer::new_from_string(input.into());
         for i in 0..output.len() {
-            let token = l.next_token();
-            println!("{:?}", token);
+            let (_, token) = l.next_token();
             assert_eq!(output[i], token);
         }
     }

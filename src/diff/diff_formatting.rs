@@ -3,11 +3,12 @@ use crate::{
     formatter::{ColorTrait, StyleTrait},
     Options,
 };
+
 use super::diff_ast::{Content, ContentType, Statement};
 
 impl Content {
     pub fn fmt(&self, search_string: &str) -> String {
-        let out_line = format!("{}\t{}\n", self.c_type.to_string(), self.line_data);
+        let out_line = format!("{}    {}\n", self.c_type.to_string(), self.line_data);
         if self.c_type == ContentType::Neutral {
             return out_line;
         }

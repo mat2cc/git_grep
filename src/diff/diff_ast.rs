@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use crate::Options;
 
+#[derive(Debug, PartialEq)]
 pub struct Program {
     pub statements: Vec<Statement>,
     pub errors: Vec<String>,
@@ -34,7 +35,7 @@ impl ToString for ContentType {
         match self {
             ContentType::Add => "+".to_string(),
             ContentType::Remove => "-".to_string(),
-            ContentType::Neutral => " ".to_string(),
+            ContentType::Neutral => "".to_string(),
         }
     }
 }
@@ -61,7 +62,7 @@ pub trait StatementTrait {
     // TODO: add some print option here. OR we can try to implement Debug for implemented structs
 }
 
-// #[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq)]
 pub struct Statement {
     pub a_file: String,
     pub b_file: String,
