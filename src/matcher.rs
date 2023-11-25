@@ -95,13 +95,15 @@ impl CommitMatcher {
             diff_args.push(with_context);
         }
 
-        let diff = std::process::Command::new("git")
-            .args(diff_args)
-            .output()
-            .expect(&format!(
-                "failed diff for commits {current_commit}, {previous_commit}",
-            ));
+        let mut com = std::process::Command::new("git");
+        com.args(diff_args);
+        if let Some(t) = &options.target_dir {
+            com.current_dir(t);
+        }
 
+        let diff = com.output().expect(&format!(
+            "failed diff for commits {current_commit}, {previous_commit}",
+        ));
         let str_diff = std::str::from_utf8(&diff.stdout).expect("couldn't read file");
 
         // early exit if there is no content from the diff

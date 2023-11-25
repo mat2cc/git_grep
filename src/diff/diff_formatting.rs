@@ -22,7 +22,7 @@ impl Content {
             .split(search_string)
             .map(|x| colorize(x))
             .collect::<Vec<String>>()
-            .join(&search_string.bold());
+            .join(&search_string.bold().cyan());
 
         return out_line;
     }

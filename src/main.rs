@@ -42,7 +42,11 @@ struct Cli {
 
     /// do not print the file name and the number of matches per file
     #[arg(long)]
-    skip_file_print: bool
+    skip_file_print: bool,
+
+    /// git directory to search in
+    #[arg(long)]
+    target_dir: Option<String>
 }
 
 #[derive(Debug, Clone)]
@@ -52,6 +56,7 @@ pub struct Options {
     show_empty: bool,
     search_string: String,
     skip_file_print: bool,
+    target_dir: Option<String>,
 }
 
 impl From<Cli> for Options {
@@ -62,6 +67,7 @@ impl From<Cli> for Options {
             after_context: cli.after_context.unwrap_or(cli.context.unwrap_or(0)),
             show_empty: cli.show_empty,
             skip_file_print: cli.skip_file_print,
+            target_dir: cli.target_dir,
         }
     }
 }
@@ -72,6 +78,9 @@ fn main() {
     let mut a = Command::new("git");
     a.arg("log");
     a.arg("--pretty=oneline");
+    if let Some(target_dir) = &cli.target_dir {
+        a.current_dir(target_dir);
+    }
     if let Some(depth) = cli.depth {
         if depth == 0 {
             panic!("depth must be greater than 0");
