@@ -6,7 +6,7 @@ use std::{
 use crate::{
     diff::{diff_lexer::DiffLexer, diff_parser::DiffParser},
     formatter::{ColorTrait, StyleTrait},
-    one_line::parser::Program,
+    pretty_medium::parser::Program,
     Options,
 };
 

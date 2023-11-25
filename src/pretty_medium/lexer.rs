@@ -3,10 +3,13 @@ pub enum Token {
     Hash(String),
     Word(String),
     Head,
+    Commit,
+    Author,
+    Date,
+    NewLine,
     LParen,
     RParen,
     Arrow,
-    NewLine,
     EOF,
     Illegal,
 }
@@ -21,6 +24,9 @@ impl From<&str> for Token {
     fn from(s: &str) -> Self {
         match s {
             "HEAD" => Token::Head,
+            "commit" => Token::Commit,
+            "Author:" => Token::Author,
+            "Date:" => Token::Date,
             s if s.len() == 40 && s.bytes().all(|x| x.is_ascii_hexdigit()) => Token::Hash(s.into()),
             _ => Token::Word(s.into()),
         }
@@ -109,50 +115,45 @@ mod tests {
     use super::{Lexer, Token};
 
     #[test]
-    fn with_origin_branch() {
-        let input = r#"c03b7c35a902784aae4c3fd7fdfb8479734fda70 (HEAD -> master, origin/master) Title
-a42cc2e1c21d71ce016b5b878b4b1ac801a5fb83 feat: parsing done "#;
-        let output = vec![
-            Token::Hash("c03b7c35a902784aae4c3fd7fdfb8479734fda70".into()),
-            Token::LParen,
-            Token::Head,
-            Token::Arrow,
-            Token::Word("master,".into()),
-            Token::Word("origin/master".into()),
-            Token::RParen,
-            Token::Word("Title".into()),
-            Token::NewLine,
-            Token::Hash("a42cc2e1c21d71ce016b5b878b4b1ac801a5fb83".into()),
-            Token::Word("feat:".into()),
-            Token::Word("parsing".into()),
-            Token::Word("done".into()),
-            Token::EOF,
-        ];
+    fn pretty_medium_tokenize() {
+        let input = r#"commit 0b5a4e8d5a1ae5b6d5539e3fc7023e0f3faf77af (HEAD -> master, origin/master)
+Author: Matt Christofides <matt.christofides@gmail.com>
+Date:   Sat Nov 25 15:58:03 2023 -0500
 
-        let mut l = Lexer::new_from_string(input.into());
-        for i in 0..output.len() {
-            assert_eq!(output[i], l.next_token())
-        }
-    }
-
-    #[test]
-    fn tokenize() {
-        let input = r#"c03b7c35a902784aae4c3fd7fdfb8479734fda70 (HEAD -> master) Title
-a42cc2e1c21d71ce016b5b878b4b1ac801a5fb83 feat: parsing done "#;
+    feat: added target dir option
+"#;
+        use Token::*;
         let output = vec![
-            Token::Hash("c03b7c35a902784aae4c3fd7fdfb8479734fda70".into()),
-            Token::LParen,
-            Token::Head,
-            Token::Arrow,
-            Token::Word("master".into()),
-            Token::RParen,
-            Token::Word("Title".into()),
-            Token::NewLine,
-            Token::Hash("a42cc2e1c21d71ce016b5b878b4b1ac801a5fb83".into()),
-            Token::Word("feat:".into()),
-            Token::Word("parsing".into()),
-            Token::Word("done".into()),
-            Token::EOF,
+            Commit,
+            Hash("0b5a4e8d5a1ae5b6d5539e3fc7023e0f3faf77af".into()),
+            LParen,
+            Head,
+            Arrow,
+            Word("master,".into()),
+            Word("origin/master".into()),
+            RParen,
+            NewLine,
+            Author,
+            Word("Matt".into()),
+            Word("Christofides".into()),
+            Word("<matt.christofides@gmail.com>".into()),
+            NewLine,
+            Date,
+            Word("Sat".into()),
+            Word("Nov".into()),
+            Word("25".into()),
+            Word("15:58:03".into()),
+            Word("2023".into()),
+            Word("-0500".into()),
+            NewLine,
+            NewLine,
+            Word("feat:".into()),
+            Word("added".into()),
+            Word("target".into()),
+            Word("dir".into()),
+            Word("option".into()),
+            NewLine,
+            EOF,
         ];
 
         let mut l = Lexer::new_from_string(input.into());

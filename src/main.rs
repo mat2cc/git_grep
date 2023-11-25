@@ -2,11 +2,12 @@ mod diff;
 mod one_line;
 mod matcher;
 mod formatter;
+mod pretty_medium;
 
-use clap::{Parser, ValueEnum};
+use clap::{Parser as ClapParser, ValueEnum};
 use std::{process::Command, time::Instant};
 
-use one_line::lexer::Lexer;
+use pretty_medium::{lexer::Lexer, parser::Parser};
 
 use crate::matcher::{MatchFormat, do_the_matching};
 
@@ -16,7 +17,7 @@ enum StatementType {
     Chunks
 }
 
-#[derive(Parser)]
+#[derive(ClapParser)]
 #[command(author, about, version)]
 struct Cli {
     /// search string
@@ -90,7 +91,7 @@ fn main() {
 
     let o = a.output().expect("failed command");
     let l = Lexer::new(o.stdout);
-    let mut p = one_line::parser::Parser::new(l);
+    let mut p = Parser::new(l);
     let program = p.parse_program();
 
     let options = Options::from(cli);
