@@ -1,11 +1,10 @@
 mod diff;
-mod one_line;
 mod matcher;
 mod formatter;
 mod pretty_medium;
 
 use clap::{Parser as ClapParser, ValueEnum};
-use std::{process::Command, time::Instant};
+use std::{process::Command, time::Instant, str::from_utf8};
 
 use pretty_medium::{lexer::Lexer, parser::Parser};
 
@@ -78,7 +77,7 @@ fn main() {
     let cli = Cli::parse();
     let mut a = Command::new("git");
     a.arg("log");
-    a.arg("--pretty=oneline");
+    a.arg("--pretty=medium");
     if let Some(target_dir) = &cli.target_dir {
         a.current_dir(target_dir);
     }
@@ -90,6 +89,7 @@ fn main() {
     }
 
     let o = a.output().expect("failed command");
+
     let l = Lexer::new(o.stdout);
     let mut p = Parser::new(l);
     let program = p.parse_program();

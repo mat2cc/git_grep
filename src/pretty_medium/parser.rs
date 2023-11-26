@@ -188,7 +188,14 @@ mod tests {
 
     #[test]
     fn parsing_pretty_medium() {
-        let input = r#"commit 0b5a4e8d5a1ae5b6d5539e3fc7023e0f3faf77af (HEAD -> master, origin/master)
+        let input = r#"commit bb4055c04da174bbfc93e63952d4ccc84e4832ab
+Author: Matt Christofides <matt.christofides@gmail.com>
+Date:   Sat Nov 25 17:52:39 2023 -0500
+
+    feat: added parser for git log --pretty=medium as we want the date
+    included
+
+commit 0b5a4e8d5a1ae5b6d5539e3fc7023e0f3faf77af
 Author: Matt Christofides <matt.christofides@gmail.com>
 Date:   Sat Nov 25 15:58:03 2023 -0500
 
@@ -250,7 +257,71 @@ Date:   Sat Aug 19 14:32:59 2023 -0400
     refactor: created args object to be passed down, get context form git
     diff
 
-"#;
+commit b512fcc3813597f93a1526c34807477417e2523b
+Author: Matt Christofides <matt.christofides@gmail.com>
+Date:   Fri Aug 18 16:10:37 2023 -0400
+
+    feat: setup for context argument
+
+commit 9f15e7ec35d46786e072ddaafa8083417985f0ad
+Author: Matthew Christofides <mattc@mb-air.local>
+Date:   Tue Aug 15 22:06:15 2023 -0400
+
+    feat: ignore empty diffs
+
+commit 8e4569deb942d5885b68fda72880b8d5a063eee7
+Author: Matthew Christofides <mattc@mb-air.local>
+Date:   Sun Aug 13 17:47:14 2023 -0400
+
+    feat: added formatter for color output
+
+commit 1dc8a0917971a8a12aacb582e85b4e688aec1769
+Author: Matthew Christofides <mattc@mb-air.local>
+Date:   Sat Jul 15 21:31:52 2023 -0400
+
+    feat: multithreaded matching
+
+commit b0c6fd5103be8489939ebdca04cfa0c1a40a82bd
+Author: Matthew Christofides <mattc@mb-air.local>
+Date:   Tue Jul 4 18:19:07 2023 -0400
+
+    feat: added matcher to produce formatted output from parsed data
+
+commit 335b70d72191fa77741a181801faab0993edef22
+Author: Matthew Christofides <mattc@mb-air.local>
+Date:   Tue Jul 4 13:13:56 2023 -0400
+
+    fix: switched around added/removed in chunks for parser, tests updated
+
+commit 86e4c7e545fe2dc859e6101f8ca5f1572326c2fd
+Author: Matthew Christofides <mattc@mb-air.local>
+Date:   Sat Jun 10 00:05:59 2023 -0400
+
+    feat: diff parser working, with tests
+
+commit 6e9f3ac09f9afe42e5218c0a1a382c84778a4c80
+Author: Matthew Christofides <mattc@mb-air.local>
+Date:   Thu Jun 8 19:41:15 2023 -0400
+
+    feat: restructure project, diff parser wip
+
+commit f6e979b91ee5c6874fa1df5aa14d34a061d8b91a
+Author: Matthew Christofides <mattc@mb-air.local>
+Date:   Thu Jun 8 18:51:18 2023 -0400
+
+    feat: can parse oneline fulll, diff lexer complete
+
+commit cf73c10f56e5258a927abfdde184fa8f51913c40
+Author: Matthew Christofides <mattc@mb-air.local>
+Date:   Wed Jun 7 17:51:51 2023 -0400
+
+    feat: parsing of oneline commits
+
+commit f82c96dbee4a6af7904dbd696da6a886a9b9a868
+Author: Matthew Christofides <mattc@mb-air.local>
+Date:   Sat Jun 3 12:12:14 2023 -0400
+
+    feat: initial commit"#;
 
         let l = Lexer::new(input.to_string().into_bytes());
         let mut p = Parser::new(l);

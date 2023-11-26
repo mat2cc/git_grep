@@ -21,6 +21,7 @@ pub struct CommitMatcher {
     previous_hash: String,
     file_matches: Vec<FileMatches>,
     total_matches: usize,
+    date: String
 }
 
 #[derive(Debug)]
@@ -44,12 +45,11 @@ pub fn do_the_matching(program: Program, options: Options) -> MatcherOutput {
 
         let current_hash = program.0[c_idx].hash.clone();
         let previous_hash = program.0[c_idx - 1].hash.clone();
-
-        println!("{current_hash} {previous_hash}");
+        let date = program.0[c_idx].date.clone();
 
         thread::spawn(move || {
             let commit_match =
-                CommitMatcher::find_matches(current_hash, previous_hash, options_arc);
+                CommitMatcher::find_matches(current_hash, previous_hash, date, options_arc);
             let num_matches = commit_match.total_matches;
             _ = tx.send((commit_match, num_matches));
         });
@@ -59,8 +59,9 @@ pub fn do_the_matching(program: Program, options: Options) -> MatcherOutput {
     let mut message_num: usize = 0;
 
     for (commit, num_matches) in rx {
-        message_num += 1;
         commit_matches.push(commit);
+
+        message_num += 1;
         total_matches += num_matches;
 
         if message_num >= messages {
@@ -85,6 +86,7 @@ impl CommitMatcher {
     fn find_matches(
         current_commit: String,
         previous_commit: String,
+        date: String,
         options: Arc<Options>,
     ) -> Self {
         let mut diff_args = vec!["diff", &current_commit, &previous_commit];
@@ -113,6 +115,7 @@ impl CommitMatcher {
                 previous_hash: previous_commit.to_string(),
                 file_matches: Vec::new(),
                 total_matches: 0,
+                date
             };
         }
 
@@ -141,6 +144,7 @@ impl CommitMatcher {
             previous_hash: previous_commit.to_string(),
             file_matches: matches,
             total_matches,
+            date
         }
     }
 }
@@ -178,6 +182,11 @@ impl MatchFormat for CommitMatcher {
             "git diff".cyan(),
             &self.current_hash.cyan().bold(),
             &self.previous_hash.cyan().bold(),
+        ));
+        out.push_str(&format!(
+            "{} {}\n",
+            "date: ".cyan(),
+            &self.date.cyan().bold()
         ));
         out.push_str(&format!(
             "{} {}\n",
