@@ -1,19 +1,19 @@
 mod diff;
-mod matcher;
 mod formatter;
+mod matcher;
 mod pretty_medium;
 
 use clap::{Parser as ClapParser, ValueEnum};
-use std::{process::Command, time::Instant, str::from_utf8};
+use std::{process::Command, time::Instant};
 
 use pretty_medium::{lexer::Lexer, parser::Parser};
 
-use crate::matcher::{MatchFormat, do_the_matching};
+use crate::matcher::{do_the_matching, MatchFormat};
 
 #[derive(ValueEnum, Clone, Debug)]
 enum StatementType {
     Lines,
-    Chunks
+    Chunks,
 }
 
 #[derive(ClapParser)]
@@ -21,8 +21,7 @@ enum StatementType {
 struct Cli {
     /// search string
     search: String,
-    // path of the git repository
-    // path: std::path::PathBuf,
+
     /// depth
     #[arg(short = 'D', long)]
     depth: Option<usize>,
@@ -31,12 +30,13 @@ struct Cli {
     #[arg(long)]
     show_empty: bool,
 
+    /// print NUM lines of leading context
     #[arg(short = 'B', long)]
     before_context: Option<usize>,
-
+    /// print NUM lines of trailing context
     #[arg(short = 'A', long)]
     after_context: Option<usize>,
-
+    /// print NUM lines of output context
     #[arg(short = 'C', long)]
     context: Option<usize>,
 
@@ -46,7 +46,7 @@ struct Cli {
 
     /// git directory to search in
     #[arg(long)]
-    target_dir: Option<String>
+    target_dir: Option<String>,
 }
 
 #[derive(Debug, Clone)]

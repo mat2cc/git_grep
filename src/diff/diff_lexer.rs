@@ -219,9 +219,6 @@ mod tests {
 -    indentFour
 -	tabIndent
 }"#;
-// +
-// +impl Content {
-// +    pub fn fmt(&self, search_string: &str) -> String {
 
         use DiffToken::*;
         let output = vec![

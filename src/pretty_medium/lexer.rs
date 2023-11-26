@@ -2,14 +2,12 @@
 pub enum Token {
     Hash(String),
     Word(String),
-    Head,
     Commit,
     Author,
     Date,
     NewLine,
     LParen,
     RParen,
-    Arrow,
     EOF,
     Illegal,
 }
@@ -23,7 +21,6 @@ impl Default for Token {
 impl From<&str> for Token {
     fn from(s: &str) -> Self {
         match s {
-            "HEAD" => Token::Head,
             "commit" => Token::Commit,
             "Author:" => Token::Author,
             "Date:" => Token::Date,
@@ -83,14 +80,6 @@ impl Lexer {
             b'(' => Token::LParen,
             b')' => Token::RParen,
             b'\n' => Token::NewLine,
-            b'-' => {
-                if self.input[self.pos + 1] == b'>' {
-                    self.read_char();
-                    Token::Arrow
-                } else {
-                    return self.read_word();
-                }
-            }
             rest if rest.is_ascii() => return self.read_word(),
             _ => Token::Illegal,
         };
@@ -113,22 +102,20 @@ mod tests {
     }
 
     use super::{Lexer, Token};
-
-    #[test]
-    fn pretty_medium_tokenize() {
-        let input = r#"commit 0b5a4e8d5a1ae5b6d5539e3fc7023e0f3faf77af (HEAD -> master, origin/master)
+    const PREFIX: &'static str = r#"commit 0b5a4e8d5a1ae5b6d5539e3fc7023e0f3faf77af (HEAD -> master, origin/master)
 Author: Matt Christofides <matt.christofides@gmail.com>
 Date:   Sat Nov 25 15:58:03 2023 -0500
 
-    feat: added target dir option
 "#;
+
+    fn gen_prefix_matches() -> Vec<Token> {
         use Token::*;
-        let output = vec![
+        vec![
             Commit,
             Hash("0b5a4e8d5a1ae5b6d5539e3fc7023e0f3faf77af".into()),
             LParen,
-            Head,
-            Arrow,
+            Word("HEAD".into()),
+            Word("->".into()),
             Word("master,".into()),
             Word("origin/master".into()),
             RParen,
@@ -147,14 +134,59 @@ Date:   Sat Nov 25 15:58:03 2023 -0500
             Word("-0500".into()),
             NewLine,
             NewLine,
+        ]
+    }
+
+    #[test]
+    fn testing_keywords_in_message() {
+        let input = format!("{PREFIX} HEAD commit Author: Date: test");
+        use Token::*;
+        let mut output = gen_prefix_matches();
+        output.append(&mut vec![
+            Word("HEAD".into()),
+            Commit,
+            Author,
+            Date,
+            Word("test".into()),
+            EOF,
+        ]);
+
+        let mut l = Lexer::new_from_string(input.into());
+        for i in 0..output.len() {
+            assert_eq!(output[i], l.next_token())
+        }
+    }
+
+    #[test]
+    fn pretty_medium_tokenize() {
+        let input = format!(
+            r#"{PREFIX}feat: added target dir option
+
+commit bb4055c04da174bbfc93e63952d4ccc84e4832ab (origin/master)
+Author: Matt Christofides <matt.christofides@gmail.com>"#
+        );
+        use Token::*;
+        let mut output = gen_prefix_matches();
+        output.append(&mut vec![
             Word("feat:".into()),
             Word("added".into()),
             Word("target".into()),
             Word("dir".into()),
             Word("option".into()),
             NewLine,
+            NewLine,
+            Commit,
+            Hash("bb4055c04da174bbfc93e63952d4ccc84e4832ab".into()),
+            LParen,
+            Word("origin/master".into()),
+            RParen,
+            NewLine,
+            Author,
+            Word("Matt".into()),
+            Word("Christofides".into()),
+            Word("<matt.christofides@gmail.com>".into()),
             EOF,
-        ];
+        ]);
 
         let mut l = Lexer::new_from_string(input.into());
         for i in 0..output.len() {
