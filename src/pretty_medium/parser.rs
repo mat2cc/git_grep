@@ -3,11 +3,11 @@ use anyhow::{Error, Result};
 use super::lexer::{Lexer, Token};
 pub struct Program(pub Vec<Commit>, pub Vec<Error>);
 
+#[derive(Debug, Clone)]
 pub struct Commit {
     pub hash: String,
     pub date: String,
-    #[allow(dead_code)]
-    message: String,
+    pub message: String,
     #[allow(dead_code)]
     head: Option<Vec<String>>,
 }

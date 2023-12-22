@@ -47,6 +47,10 @@ struct Cli {
     /// git directory to search in
     #[arg(long)]
     target_dir: Option<String>,
+
+    /// print only the matched lines, with their commit and file diffs
+    #[arg(long)]
+    simple_print: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -94,9 +98,15 @@ fn main() {
     let mut p = Parser::new(l);
     let program = p.parse_program();
 
+    let simple_print = cli.simple_print;
+
     let options = Options::from(cli);
     let matcher = do_the_matching(program, options.clone());
 
-    println!("{}", matcher.print(options));
-    println!("time elapsed: {}", now.elapsed().as_millis());
+    if simple_print {
+        println!("{}", matcher.simple_print(options));
+    } else {
+        println!("{}", matcher.print(options));
+    }
+    eprintln!("time elapsed: {}", now.elapsed().as_millis());
 }
