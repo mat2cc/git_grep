@@ -159,30 +159,31 @@ impl MatchFormat for MatcherOutput {
             self.total_matches
         ));
 
-        self.commit_matches.iter().for_each(|commit_match| {
-            if !options.show_empty && commit_match.total_matches == 0 {
-                return;
-            }
-            out.push_str(&commit_match.print(options.clone()))
-        });
+        out.push_str(
+            &self
+                .commit_matches
+                .iter()
+                .filter(|commit_match| options.show_empty || commit_match.total_matches > 0)
+                .map(|commit_match| commit_match.print(options.clone()))
+                .collect::<Vec<String>>()
+                .join("~~~\n\n"),
+        );
         out.trim().to_string()
     }
 
     fn simple_print(&self, options: Options) -> String {
-        let mut out = String::new();
-        self.commit_matches.iter().for_each(|commit_match| {
-            if !options.show_empty && commit_match.total_matches == 0 {
-                return;
-            }
-            out.push_str(&commit_match.simple_print(options.clone()))
-        });
-        out.trim().to_string()
+        self.commit_matches
+            .iter()
+            .filter(|commit_match| options.show_empty || commit_match.total_matches > 0)
+            .map(|commit_match| commit_match.simple_print(options.clone()))
+            .collect::<Vec<String>>()
+            .join("\n")
     }
 }
 
 impl MatchFormat for CommitMatcher {
     fn print(&self, options: Options) -> String {
-        let cyan = StyleBuilder::new(&options.color).add_style(Styles::Color(Color::Cyan));
+        let cyan = StyleBuilder::new(&options.color);
         let cyan_bold = cyan.clone().add_style(Styles::Bold);
 
         let mut out = String::new();
@@ -208,18 +209,20 @@ impl MatchFormat for CommitMatcher {
             cyan_bold.build(&self.total_matches.to_string()),
         ));
         out.push_str("\n");
-        self.file_matches.iter().for_each(|file_match| {
-            if !options.show_empty && file_match.matched_lines == 0 {
-                return;
-            }
-            out.push_str(&file_match.print(options.clone()))
-        });
-        out.push_str("\n");
+        out.push_str(
+            &self
+                .file_matches
+                .iter()
+                .filter(|file_match| options.show_empty || file_match.matched_lines > 0)
+                .map(|file_match| file_match.print(options.clone()))
+                .collect::<Vec<String>>()
+                .join("\n"),
+        );
         out
     }
 
     fn simple_print(&self, options: Options) -> String {
-        let cyan = StyleBuilder::new(&options.color).add_style(Styles::Color(Color::Cyan));
+        let cyan = StyleBuilder::new(&options.color);
         let cyan_bold = cyan.clone().add_style(Styles::Bold);
 
         let mut out = String::new();
@@ -229,12 +232,16 @@ impl MatchFormat for CommitMatcher {
             cyan_bold.build(&self.commit.hash),
             cyan_bold.build(&self.previous_hash),
         ));
-        self.file_matches.iter().for_each(|file_match| {
-            if !options.show_empty && file_match.matched_lines == 0 {
-                return;
-            }
-            out.push_str(&file_match.simple_print(options.clone()))
-        });
+        out.push_str(
+            &self
+                .file_matches
+                .iter()
+                .filter(|file_match| options.show_empty || file_match.matched_lines > 0)
+                .map(|file_match| file_match.simple_print(options.clone()))
+                .collect::<Vec<String>>()
+                .join("\n"),
+        );
+
         out.push_str("\n");
         out
     }
@@ -242,7 +249,7 @@ impl MatchFormat for CommitMatcher {
 
 impl MatchFormat for FileMatches {
     fn print(&self, options: Options) -> String {
-        let cyan = StyleBuilder::new(&options.color).add_style(Styles::Color(Color::Cyan));
+        let cyan = StyleBuilder::new(&options.color);
         let cyan_it = cyan.clone().add_style(Styles::Italic);
         let cyan_bold = cyan.clone().add_style(Styles::Bold);
 
@@ -260,14 +267,11 @@ impl MatchFormat for FileMatches {
             ));
         }
         out.push_str(&self.content);
-        out.push_str("\n");
         out
     }
 
     fn simple_print(&self, options: Options) -> String {
-        let cyan_it = StyleBuilder::new(&options.color)
-            .add_style(Styles::Color(Color::Cyan))
-            .add_style(Styles::Italic);
+        let cyan_it = StyleBuilder::new(&options.color).add_style(Styles::Italic);
 
         let mut out = String::new();
         if !options.skip_file_print {
@@ -278,7 +282,6 @@ impl MatchFormat for FileMatches {
             ));
         }
         out.push_str(&self.content);
-        out.push_str("\n");
         out
     }
 }
