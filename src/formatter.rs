@@ -1,77 +1,76 @@
-pub trait ColorTrait {
-    fn green(&self) -> String;
-    fn red(&self) -> String;
-    fn yellow(&self) -> String;
-    fn cyan(&self) -> String;
+use crate::ColorSettings;
+
+#[derive(Clone, Debug)]
+pub enum Color {
+    Green,
+    Red,
+    Yellow,
+    Cyan,
 }
 
-pub trait StyleTrait {
-    fn bold(&self) -> String;
-    fn underline(&self) -> String;
-    fn italic(&self) -> String;
-}
-
-impl StyleTrait for str {
-    fn bold(&self) -> String {
-        format!("\x1b[1m{}\x1b[0m", self)
-    }
-
-    fn underline(&self) -> String {
-        format!("\x1b[4m{}\x1b[0m", self)
-    }
-
-    fn italic(&self) -> String {
-        format!("\x1b[3m{}\x1b[0m", self)
+impl ToString for Color {
+    fn to_string(&self) -> String {
+        match self {
+            Color::Green => "\x1b[32m",
+            Color::Red => "\x1b[31m",
+            Color::Yellow => "\x1b[33m",
+            Color::Cyan => "\x1b[36m",
+        }
+        .to_string()
     }
 }
 
-impl ColorTrait for str {
-    fn green(&self) -> String {
-        format!("\x1b[32m{}\x1b[0m", self)
+#[derive(Clone, Debug)]
+pub enum Styles {
+    Bold,
+    Underline,
+    Italic,
+    Color(Color),
+}
+
+impl ToString for Styles {
+    fn to_string(&self) -> String {
+        match self {
+            Styles::Bold => "\x1b[1m".to_string(),
+            Styles::Underline => "\x1b[4m".to_string(),
+            Styles::Italic => "\x1b[3m".to_string(),
+            Styles::Color(color) => color.to_string(),
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct StyleBuilder {
+    color: ColorSettings,
+    styles: Vec<Styles>,
+}
+
+impl StyleBuilder {
+    pub fn new(color: ColorSettings) -> Self {
+        Self {
+            color,
+            styles: Vec::new(),
+        }
     }
 
-    fn red(&self) -> String {
-        format!("\x1b[31m{}\x1b[0m", self)
+    pub fn add_style(mut self, style: Styles) -> Self {
+        self.styles.push(style);
+        self
     }
 
-    fn yellow(&self) -> String {
-        format!("\x1b[33m{}\x1b[0m", self)
-    }
+    pub fn build(&self, input: &str) -> String {
+        if self.color == ColorSettings::Uncolored {
+            return input.to_string();
+        }
 
-    fn cyan(&self) -> String {
-        format!("\x1b[36m{}\x1b[0m", self)
+        let mut out = String::new();
+        for style in &self.styles {
+            out.push_str(&style.to_string());
+        }
+        out.push_str(input);
+        out.push_str("\x1b[0m");
+        out
     }
 }
 
 
-impl ColorTrait for String {
-    fn green(&self) -> String {
-        format!("\x1b[32m{}\x1b[0m", self)
-    }
-
-    fn red(&self) -> String {
-        format!("\x1b[31m{}\x1b[0m", self)
-    }
-
-    fn yellow(&self) -> String {
-        format!("\x1b[33m{}\x1b[0m", self)
-    }
-
-    fn cyan(&self) -> String {
-        format!("\x1b[36m{}\x1b[0m", self)
-    }
-}
-
-impl StyleTrait for String {
-    fn bold(&self) -> String {
-        format!("\x1b[1m{}\x1b[0m", self)
-    }
-
-    fn underline(&self) -> String {
-        format!("\x1b[4m{}\x1b[0m", self)
-    }
-
-    fn italic(&self) -> String {
-        format!("\x1b[3m{}\x1b[0m", self)
-    }
-}

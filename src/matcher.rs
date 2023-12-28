@@ -5,7 +5,7 @@ use std::{
 
 use crate::{
     diff::{diff_lexer::DiffLexer, diff_parser::DiffParser},
-    formatter::{ColorTrait, StyleTrait},
+    formatter::{Color, StyleBuilder, Styles},
     pretty_medium::parser::{Commit, Program},
     Options,
 };
@@ -147,12 +147,15 @@ pub trait MatchFormat {
 
 impl MatchFormat for MatcherOutput {
     fn print(&self, options: Options) -> String {
+        let cyan_bold = StyleBuilder::new(options.color.clone())
+            .add_style(Styles::Color(Color::Cyan))
+            .add_style(Styles::Bold);
         let mut out = String::new();
         out.push_str(&format!(
             "{} \"{}\"\n{} {}\n\n",
-            "Searched For".cyan().bold(),
+            cyan_bold.build("Searched For:"),
             self.search_string,
-            "Total Matches:".cyan().bold(),
+            cyan_bold.build("Total Matches:"),
             self.total_matches
         ));
 
@@ -179,27 +182,30 @@ impl MatchFormat for MatcherOutput {
 
 impl MatchFormat for CommitMatcher {
     fn print(&self, options: Options) -> String {
+        let cyan = StyleBuilder::new(options.color.clone()).add_style(Styles::Color(Color::Cyan));
+        let cyan_bold = cyan.clone().add_style(Styles::Bold);
+
         let mut out = String::new();
         out.push_str(&format!(
             "{} {} {}\n",
-            "git diff".cyan(),
-            &self.commit.hash.cyan().bold(),
-            &self.previous_hash.cyan().bold(),
+            cyan.build("git diff"),
+            cyan_bold.build(&self.commit.hash),
+            cyan_bold.build(&self.previous_hash),
         ));
         out.push_str(&format!(
             "{} {}\n",
-            "message: ".cyan(),
-            &self.commit.message.cyan().bold()
+            cyan.build("message:"),
+            cyan_bold.build(&self.commit.message),
         ));
         out.push_str(&format!(
             "{} {}\n",
-            "date: ".cyan(),
-            &self.commit.date.cyan().bold()
+            cyan.build("date:"),
+            cyan_bold.build(&self.commit.date),
         ));
         out.push_str(&format!(
             "{} {}\n",
-            "Commit matches:".cyan(),
-            &self.total_matches.to_string().cyan().bold(),
+            cyan.build("Commit matches:"),
+            cyan_bold.build(&self.total_matches.to_string()),
         ));
         out.push_str("\n");
         self.file_matches.iter().for_each(|file_match| {
@@ -213,12 +219,15 @@ impl MatchFormat for CommitMatcher {
     }
 
     fn simple_print(&self, options: Options) -> String {
+        let cyan = StyleBuilder::new(options.color.clone()).add_style(Styles::Color(Color::Cyan));
+        let cyan_bold = cyan.clone().add_style(Styles::Bold);
+
         let mut out = String::new();
         out.push_str(&format!(
             "{} {} {}\n",
-            "git diff".cyan(),
-            &self.commit.hash.cyan().bold(),
-            &self.previous_hash.cyan().bold(),
+            cyan.build("git diff"),
+            cyan_bold.build(&self.commit.hash),
+            cyan_bold.build(&self.previous_hash),
         ));
         self.file_matches.iter().for_each(|file_match| {
             if !options.show_empty && file_match.matched_lines == 0 {
@@ -226,25 +235,28 @@ impl MatchFormat for CommitMatcher {
             }
             out.push_str(&file_match.simple_print(options.clone()))
         });
+        out.push_str("\n");
         out
     }
 }
 
 impl MatchFormat for FileMatches {
     fn print(&self, options: Options) -> String {
+        let cyan = StyleBuilder::new(options.color).add_style(Styles::Color(Color::Cyan));
+        let cyan_it = cyan.clone().add_style(Styles::Italic);
+        let cyan_bold = cyan.clone().add_style(Styles::Bold);
+
         let mut out = String::new();
         if !options.skip_file_print {
             // print file details
             out.push_str(&format!(
                 "{}\n",
-                format!("file diff: {} {}", &self.file_a, &self.file_b)
-                    .cyan()
-                    .italic(),
+                cyan_it.build(&format!("file diff: {} {}", &self.file_a, &self.file_b)),
             ));
             out.push_str(&format!(
                 "{} {}\n",
-                "File matches:".cyan(),
-                &self.matched_lines.to_string().cyan().bold(),
+                cyan.build("File matches:"),
+                cyan_bold.build(&self.matched_lines.to_string()),
             ));
         }
         out.push_str(&self.content);
@@ -253,19 +265,20 @@ impl MatchFormat for FileMatches {
     }
 
     fn simple_print(&self, options: Options) -> String {
+        let cyan_it = StyleBuilder::new(options.color)
+            .add_style(Styles::Color(Color::Cyan))
+            .add_style(Styles::Italic);
+
         let mut out = String::new();
         if !options.skip_file_print {
             // print file details
             out.push_str(&format!(
                 "{}\n",
-                format!("file diff: {} {}", &self.file_a, &self.file_b)
-                    .cyan()
-                    .italic(),
+                cyan_it.build(&format!("file diff: {} {}", &self.file_a, &self.file_b)),
             ));
         }
         out.push_str(&self.content);
         out.push_str("\n");
         out
-
     }
 }
