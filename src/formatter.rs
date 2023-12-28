@@ -40,13 +40,13 @@ impl ToString for Styles {
 }
 
 #[derive(Clone, Debug)]
-pub struct StyleBuilder {
-    color: ColorSettings,
+pub struct StyleBuilder<'a> {
+    color: &'a ColorSettings,
     styles: Vec<Styles>,
 }
 
-impl StyleBuilder {
-    pub fn new(color: ColorSettings) -> Self {
+impl<'a> StyleBuilder<'a> {
+    pub fn new(color: &'a ColorSettings) -> Self {
         Self {
             color,
             styles: Vec::new(),
@@ -59,7 +59,7 @@ impl StyleBuilder {
     }
 
     pub fn build(&self, input: &str) -> String {
-        if self.color == ColorSettings::Uncolored {
+        if self.color == &ColorSettings::Uncolored {
             return input.to_string();
         }
 

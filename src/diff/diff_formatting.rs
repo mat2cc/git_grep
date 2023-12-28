@@ -1,14 +1,14 @@
 use std::sync::Arc;
 use crate::{
     formatter::{StyleBuilder, Color, Styles},
-    Options,
+    Options, ColorSettings,
 };
 
 use super::diff_ast::{Content, ContentType, Statement};
 
 impl Content {
-    pub fn fmt(&self, search_string: &str, options: Arc<Options>) -> String {
-        let style = StyleBuilder::new(options.color.clone());
+    pub fn fmt(&self, search_string: &str, color: &ColorSettings) -> String {
+        let style =  StyleBuilder::new(color);
         let green = style.clone().add_style(Styles::Color(Color::Green));
         let red = style.clone().add_style(Styles::Color(Color::Red));
         let cyan_bold = style.add_style(Styles::Color(Color::Cyan)).add_style(Styles::Bold);
@@ -52,7 +52,7 @@ impl Statement {
 
         for x in 0..self.data.len() {
             if lines[x] {
-                out.push_str(&self.data[x].fmt(&options.search_string, options.clone()));
+                out.push_str(&self.data[x].fmt(&options.search_string, &options.color));
                 // add a spacer when we have reached a break in context
                 if x + 1 < self.data.len() && !lines[x + 1] {
                     out.push_str("\n");

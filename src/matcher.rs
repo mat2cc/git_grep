@@ -147,7 +147,7 @@ pub trait MatchFormat {
 
 impl MatchFormat for MatcherOutput {
     fn print(&self, options: Options) -> String {
-        let cyan_bold = StyleBuilder::new(options.color.clone())
+        let cyan_bold = StyleBuilder::new(&options.color)
             .add_style(Styles::Color(Color::Cyan))
             .add_style(Styles::Bold);
         let mut out = String::new();
@@ -182,7 +182,7 @@ impl MatchFormat for MatcherOutput {
 
 impl MatchFormat for CommitMatcher {
     fn print(&self, options: Options) -> String {
-        let cyan = StyleBuilder::new(options.color.clone()).add_style(Styles::Color(Color::Cyan));
+        let cyan = StyleBuilder::new(&options.color).add_style(Styles::Color(Color::Cyan));
         let cyan_bold = cyan.clone().add_style(Styles::Bold);
 
         let mut out = String::new();
@@ -219,7 +219,7 @@ impl MatchFormat for CommitMatcher {
     }
 
     fn simple_print(&self, options: Options) -> String {
-        let cyan = StyleBuilder::new(options.color.clone()).add_style(Styles::Color(Color::Cyan));
+        let cyan = StyleBuilder::new(&options.color).add_style(Styles::Color(Color::Cyan));
         let cyan_bold = cyan.clone().add_style(Styles::Bold);
 
         let mut out = String::new();
@@ -242,7 +242,7 @@ impl MatchFormat for CommitMatcher {
 
 impl MatchFormat for FileMatches {
     fn print(&self, options: Options) -> String {
-        let cyan = StyleBuilder::new(options.color).add_style(Styles::Color(Color::Cyan));
+        let cyan = StyleBuilder::new(&options.color).add_style(Styles::Color(Color::Cyan));
         let cyan_it = cyan.clone().add_style(Styles::Italic);
         let cyan_bold = cyan.clone().add_style(Styles::Bold);
 
@@ -265,7 +265,7 @@ impl MatchFormat for FileMatches {
     }
 
     fn simple_print(&self, options: Options) -> String {
-        let cyan_it = StyleBuilder::new(options.color)
+        let cyan_it = StyleBuilder::new(&options.color)
             .add_style(Styles::Color(Color::Cyan))
             .add_style(Styles::Italic);
 
