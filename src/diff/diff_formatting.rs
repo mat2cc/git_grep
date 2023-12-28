@@ -1,28 +1,33 @@
 use std::sync::Arc;
 use crate::{
-    formatter::{ColorTrait, StyleTrait},
-    Options,
+    formatter::{StyleBuilder, Color, Styles},
+    Options, ColorSettings,
 };
 
 use super::diff_ast::{Content, ContentType, Statement};
 
 impl Content {
-    pub fn fmt(&self, search_string: &str) -> String {
+    pub fn fmt(&self, search_string: &str, color: &ColorSettings) -> String {
+        let style =  StyleBuilder::new(color);
+        let green = style.clone().add_style(Styles::Color(Color::Green));
+        let red = style.clone().add_style(Styles::Color(Color::Red));
+        let cyan_bold = style.add_style(Styles::Color(Color::Cyan)).add_style(Styles::Bold);
+
         let out_line = format!("{}    {}\n", self.c_type.to_string(), self.line_data);
         if self.c_type == ContentType::Neutral {
             return out_line;
         }
 
         let colorize = |s: &str| match self.c_type {
-            ContentType::Add => s.green(),
-            ContentType::Remove => s.red(),
+            ContentType::Add => green.build(s),
+            ContentType::Remove => red.build(s),
             _ => unreachable!(),
         };
         let out_line = out_line
             .split(search_string)
             .map(|x| colorize(x))
             .collect::<Vec<String>>()
-            .join(&search_string.bold().cyan());
+            .join(&cyan_bold.build(search_string));
 
         return out_line;
     }
@@ -47,7 +52,7 @@ impl Statement {
 
         for x in 0..self.data.len() {
             if lines[x] {
-                out.push_str(&self.data[x].fmt(&options.search_string));
+                out.push_str(&self.data[x].fmt(&options.search_string, &options.color));
                 // add a spacer when we have reached a break in context
                 if x + 1 < self.data.len() && !lines[x + 1] {
                     out.push_str("\n");
